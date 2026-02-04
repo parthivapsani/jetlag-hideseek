@@ -4,16 +4,18 @@ part 'question.freezed.dart';
 part 'question.g.dart';
 
 enum QuestionCategory {
-  @JsonValue('relative')
-  relative,
+  @JsonValue('matching')
+  matching,
+  @JsonValue('measuring')
+  measuring,
   @JsonValue('radar')
   radar,
+  @JsonValue('thermometer')
+  thermometer,
+  @JsonValue('tentacles')
+  tentacles,
   @JsonValue('photo')
   photo,
-  @JsonValue('oddball')
-  oddball,
-  @JsonValue('precision')
-  precision,
 }
 
 enum QuestionStatus {
@@ -102,61 +104,69 @@ class CategoryCooldown with _$CategoryCooldown {
 extension QuestionCategoryX on QuestionCategory {
   String get displayName {
     switch (this) {
-      case QuestionCategory.relative:
-        return 'Relative';
+      case QuestionCategory.matching:
+        return 'Matching';
+      case QuestionCategory.measuring:
+        return 'Measuring';
       case QuestionCategory.radar:
         return 'Radar';
+      case QuestionCategory.thermometer:
+        return 'Thermometer';
+      case QuestionCategory.tentacles:
+        return 'Tentacles';
       case QuestionCategory.photo:
         return 'Photo';
-      case QuestionCategory.oddball:
-        return 'Oddball';
-      case QuestionCategory.precision:
-        return 'Precision';
     }
   }
 
   int get defaultCoinCost {
     switch (this) {
-      case QuestionCategory.relative:
-        return 40;
-      case QuestionCategory.radar:
+      case QuestionCategory.matching:
         return 30;
+      case QuestionCategory.measuring:
+        return 30;
+      case QuestionCategory.radar:
+        return 25;
+      case QuestionCategory.thermometer:
+        return 20;
+      case QuestionCategory.tentacles:
+        return 20;
       case QuestionCategory.photo:
         return 15;
-      case QuestionCategory.oddball:
-        return 10;
-      case QuestionCategory.precision:
-        return 10;
     }
   }
 
   int get cardsDrawn {
     switch (this) {
-      case QuestionCategory.relative:
+      case QuestionCategory.matching:
+        return 2;
+      case QuestionCategory.measuring:
         return 2;
       case QuestionCategory.radar:
         return 2;
+      case QuestionCategory.thermometer:
+        return 1;
+      case QuestionCategory.tentacles:
+        return 1;
       case QuestionCategory.photo:
-        return 1;
-      case QuestionCategory.oddball:
-        return 1;
-      case QuestionCategory.precision:
         return 1;
     }
   }
 
   int get defaultResponseTimeMinutes {
     switch (this) {
-      case QuestionCategory.relative:
+      case QuestionCategory.matching:
+        return 5;
+      case QuestionCategory.measuring:
         return 5;
       case QuestionCategory.radar:
         return 5;
+      case QuestionCategory.thermometer:
+        return 5;
+      case QuestionCategory.tentacles:
+        return 5;
       case QuestionCategory.photo:
         return 15;
-      case QuestionCategory.oddball:
-        return 5;
-      case QuestionCategory.precision:
-        return 5;
     }
   }
 

@@ -289,11 +289,12 @@ class _CategoryChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (category) {
-      QuestionCategory.relative => Colors.blue,
-      QuestionCategory.radar => Colors.purple,
-      QuestionCategory.photo => Colors.green,
-      QuestionCategory.oddball => Colors.orange,
-      QuestionCategory.precision => Colors.teal,
+      QuestionCategory.matching => Colors.blue,
+      QuestionCategory.measuring => Colors.purple,
+      QuestionCategory.radar => Colors.green,
+      QuestionCategory.thermometer => Colors.orange,
+      QuestionCategory.tentacles => Colors.teal,
+      QuestionCategory.photo => Colors.pink,
     };
 
     return Container(

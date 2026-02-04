@@ -72,7 +72,7 @@ CREATE TABLE session_questions (
     was_test_mode BOOLEAN DEFAULT FALSE,
 
     CONSTRAINT valid_question_status CHECK (status IN ('pending', 'asked', 'answered', 'expired', 'vetoed')),
-    CONSTRAINT valid_category CHECK (category IN ('relative', 'radar', 'photo', 'oddball', 'precision'))
+    CONSTRAINT valid_category CHECK (category IN ('matching', 'measuring', 'radar', 'thermometer', 'tentacles', 'photo'))
 );
 
 -- Hider Cards

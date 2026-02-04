@@ -22,25 +22,28 @@ class AppConstants {
   static const int locationUpdateDistanceMeters = 10;
 
   // Question response times (in minutes)
-  static const int relativeResponseTime = 5;
+  static const int matchingResponseTime = 5;
+  static const int measuringResponseTime = 5;
   static const int radarResponseTime = 5;
+  static const int thermometerResponseTime = 5;
+  static const int tentaclesResponseTime = 5;
   static const int photoResponseTime = 15;
-  static const int oddballResponseTime = 5;
-  static const int precisionResponseTime = 5;
 
   // Card draw amounts
-  static const int relativeCardsDrawn = 2;
+  static const int matchingCardsDrawn = 2;
+  static const int measuringCardsDrawn = 2;
   static const int radarCardsDrawn = 2;
+  static const int thermometerCardsDrawn = 1;
+  static const int tentaclesCardsDrawn = 1;
   static const int photoCardsDrawn = 1;
-  static const int oddballCardsDrawn = 1;
-  static const int precisionCardsDrawn = 1;
 
   // Coin costs
-  static const int relativeCoinCost = 40;
-  static const int radarCoinCost = 30;
+  static const int matchingCoinCost = 30;
+  static const int measuringCoinCost = 30;
+  static const int radarCoinCost = 25;
+  static const int thermometerCoinCost = 20;
+  static const int tentaclesCoinCost = 20;
   static const int photoCoinCost = 15;
-  static const int oddballCoinCost = 10;
-  static const int precisionCoinCost = 10;
 
   // Distance conversions
   static const double metersPerMile = 1609.344;

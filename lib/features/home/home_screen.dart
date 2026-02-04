@@ -81,6 +81,13 @@ class HomeScreen extends ConsumerWidget {
                       label: const Text('Rules'),
                     ),
                   ),
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: () => context.push('/settings'),
+                      icon: const Icon(Icons.settings_outlined),
+                      label: const Text('Settings'),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 24),
@@ -136,11 +143,12 @@ class HomeScreen extends ConsumerWidget {
               ),
               _ruleSection(
                 'Questions',
-                '• Relative (40 coins): North/South, East/West\n'
-                    '• Radar (30 coins): Within X distance\n'
-                    '• Photo (15 coins): Send a photo\n'
-                    '• Oddball (10 coins): Creative challenges\n'
-                    '• Precision (10 coins): Specific location info',
+                '• Matching (30 coins): Which of these options matches?\n'
+                    '• Measuring (30 coins): Distance/direction to landmarks\n'
+                    '• Radar (25 coins): Within X distance of something?\n'
+                    '• Thermometer (20 coins): Hot/cold relative to guess\n'
+                    '• Tentacles (20 coins): Inside/outside drawn shapes\n'
+                    '• Photo (15 coins): Send a photo',
               ),
               _ruleSection(
                 'Cards',

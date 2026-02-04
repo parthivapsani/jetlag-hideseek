@@ -130,7 +130,7 @@ class _QuestionBrowserState extends ConsumerState<QuestionBrowser>
   }
 
   Widget _buildCategoryInfo() {
-    final category = _selectedCategory ?? QuestionCategory.relative;
+    final category = _selectedCategory ?? QuestionCategory.matching;
     final cooldownRemaining =
         ref.watch(categoryRemainingCooldownProvider(category));
     final testMode = ref.watch(testModeProvider);
@@ -182,16 +182,18 @@ class _QuestionBrowserState extends ConsumerState<QuestionBrowser>
 
   Color _getCategoryColor(QuestionCategory category) {
     switch (category) {
-      case QuestionCategory.relative:
+      case QuestionCategory.matching:
         return Colors.blue;
-      case QuestionCategory.radar:
+      case QuestionCategory.measuring:
         return Colors.purple;
-      case QuestionCategory.photo:
+      case QuestionCategory.radar:
         return Colors.green;
-      case QuestionCategory.oddball:
+      case QuestionCategory.thermometer:
         return Colors.orange;
-      case QuestionCategory.precision:
+      case QuestionCategory.tentacles:
         return Colors.teal;
+      case QuestionCategory.photo:
+        return Colors.pink;
     }
   }
 

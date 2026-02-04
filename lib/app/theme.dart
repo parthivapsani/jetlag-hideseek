@@ -27,11 +27,12 @@ class JetLagTheme {
   static const Color textMuted = Color(0xFF757575);
 
   // Question category colors
-  static const Color relativeColor = Color(0xFF2196F3);
-  static const Color radarColor = Color(0xFF9C27B0);
-  static const Color photoColor = Color(0xFF4CAF50);
-  static const Color oddballColor = Color(0xFFFF9800);
-  static const Color precisionColor = Color(0xFF009688);
+  static const Color matchingColor = Color(0xFF2196F3);   // Blue
+  static const Color measuringColor = Color(0xFF9C27B0);  // Purple
+  static const Color radarColor = Color(0xFF4CAF50);      // Green
+  static const Color thermometerColor = Color(0xFFFF9800); // Orange
+  static const Color tentaclesColor = Color(0xFF009688);  // Teal
+  static const Color photoColor = Color(0xFFE91E63);      // Pink
 
   // Card type colors
   static const Color timeBonusColor = Color(0xFF4CAF50);
@@ -493,16 +494,18 @@ class JetLagTheme {
   // Helper for question category colors
   static Color getCategoryColor(String category) {
     switch (category.toLowerCase()) {
-      case 'relative':
-        return relativeColor;
+      case 'matching':
+        return matchingColor;
+      case 'measuring':
+        return measuringColor;
       case 'radar':
         return radarColor;
+      case 'thermometer':
+        return thermometerColor;
+      case 'tentacles':
+        return tentaclesColor;
       case 'photo':
         return photoColor;
-      case 'oddball':
-        return oddballColor;
-      case 'precision':
-        return precisionColor;
       default:
         return primaryBlue;
     }

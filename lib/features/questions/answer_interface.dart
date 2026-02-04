@@ -434,16 +434,18 @@ class _AnswerInterfaceState extends ConsumerState<AnswerInterface> {
 
   Color _getCategoryColor(QuestionCategory category) {
     switch (category) {
-      case QuestionCategory.relative:
+      case QuestionCategory.matching:
         return Colors.blue;
-      case QuestionCategory.radar:
+      case QuestionCategory.measuring:
         return Colors.purple;
-      case QuestionCategory.photo:
+      case QuestionCategory.radar:
         return Colors.green;
-      case QuestionCategory.oddball:
+      case QuestionCategory.thermometer:
         return Colors.orange;
-      case QuestionCategory.precision:
+      case QuestionCategory.tentacles:
         return Colors.teal;
+      case QuestionCategory.photo:
+        return Colors.pink;
     }
   }
 }

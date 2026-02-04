@@ -11,6 +11,7 @@ import '../features/game/seeker_view.dart';
 import '../features/game/hider_view.dart';
 import '../features/game/spectator_view.dart';
 import '../features/game/game_over_screen.dart';
+import '../features/settings/settings_screen.dart';
 import '../core/providers/auth_provider.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -80,6 +81,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => GameOverScreen(
           sessionId: state.pathParameters['sessionId']!,
         ),
+      ),
+      GoRoute(
+        path: '/settings',
+        name: 'settings',
+        builder: (context, state) => const SettingsScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

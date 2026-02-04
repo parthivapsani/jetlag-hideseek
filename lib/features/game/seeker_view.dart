@@ -337,15 +337,7 @@ class _QuestionHistoryCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: question.category.displayName == 'Relative'
-                        ? Colors.blue
-                        : question.category.displayName == 'Radar'
-                            ? Colors.purple
-                            : question.category.displayName == 'Photo'
-                                ? Colors.green
-                                : question.category.displayName == 'Oddball'
-                                    ? Colors.orange
-                                    : Colors.teal,
+                    color: JetLagTheme.getCategoryColor(question.category.displayName),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
