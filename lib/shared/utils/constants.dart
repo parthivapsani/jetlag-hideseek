@@ -29,21 +29,21 @@ class AppConstants {
   static const int tentaclesResponseTime = 5;
   static const int photoResponseTime = 15;
 
-  // Card draw amounts
-  static const int matchingCardsDrawn = 2;
-  static const int measuringCardsDrawn = 2;
-  static const int radarCardsDrawn = 2;
-  static const int thermometerCardsDrawn = 1;
-  static const int tentaclesCardsDrawn = 1;
-  static const int photoCardsDrawn = 1;
+  // Card draw amounts (how many hider draws)
+  static const int matchingCardsDraw = 3;
+  static const int measuringCardsDraw = 3;
+  static const int radarCardsDraw = 2;
+  static const int thermometerCardsDraw = 2;
+  static const int tentaclesCardsDraw = 4;
+  static const int photoCardsDraw = 1;
 
-  // Coin costs
-  static const int matchingCoinCost = 30;
-  static const int measuringCoinCost = 30;
-  static const int radarCoinCost = 25;
-  static const int thermometerCoinCost = 20;
-  static const int tentaclesCoinCost = 20;
-  static const int photoCoinCost = 15;
+  // Card keep amounts (how many hider keeps)
+  static const int matchingCardsKeep = 1;
+  static const int measuringCardsKeep = 1;
+  static const int radarCardsKeep = 1;
+  static const int thermometerCardsKeep = 1;
+  static const int tentaclesCardsKeep = 2;
+  static const int photoCardsKeep = 1;
 
   // Distance conversions
   static const double metersPerMile = 1609.344;

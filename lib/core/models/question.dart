@@ -52,8 +52,8 @@ class Question with _$Question {
     required String id,
     required String text,
     required QuestionCategory category,
-    required int coinCost,
-    required int cardsDrawn,
+    required int cardsDraw,    // How many cards hider draws
+    required int cardsKeep,    // How many cards hider keeps
     required int responseTimeMinutes,
     required AnswerType answerType,
     String? answerHint,
@@ -119,39 +119,44 @@ extension QuestionCategoryX on QuestionCategory {
     }
   }
 
-  int get defaultCoinCost {
+  /// How many cards the hider draws when answering this category
+  int get cardsDraw {
     switch (this) {
       case QuestionCategory.matching:
-        return 30;
+        return 3;
       case QuestionCategory.measuring:
-        return 30;
+        return 3;
       case QuestionCategory.radar:
-        return 25;
+        return 2;
       case QuestionCategory.thermometer:
-        return 20;
+        return 2;
       case QuestionCategory.tentacles:
-        return 20;
+        return 4;
       case QuestionCategory.photo:
-        return 15;
+        return 1;
     }
   }
 
-  int get cardsDrawn {
+  /// How many cards the hider keeps when answering this category
+  int get cardsKeep {
     switch (this) {
       case QuestionCategory.matching:
-        return 2;
+        return 1;
       case QuestionCategory.measuring:
-        return 2;
+        return 1;
       case QuestionCategory.radar:
-        return 2;
+        return 1;
       case QuestionCategory.thermometer:
         return 1;
       case QuestionCategory.tentacles:
-        return 1;
+        return 2;
       case QuestionCategory.photo:
         return 1;
     }
   }
+
+  /// Card reward display string (e.g., "Draw 3, Keep 1")
+  String get cardRewardText => 'Draw $cardsDraw, Keep $cardsKeep';
 
   int get defaultResponseTimeMinutes {
     switch (this) {

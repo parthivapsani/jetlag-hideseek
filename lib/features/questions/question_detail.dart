@@ -92,15 +92,15 @@ class _QuestionDetailState extends ConsumerState<QuestionDetail> {
             Row(
               children: [
                 _StatBox(
-                  icon: Icons.monetization_on,
-                  value: '${widget.question.coinCost}',
-                  label: 'Coins',
+                  icon: Icons.style,
+                  value: '${widget.question.cardsDraw}',
+                  label: 'Draw',
                 ),
                 const SizedBox(width: 16),
                 _StatBox(
-                  icon: Icons.style,
-                  value: '${widget.question.cardsDrawn}',
-                  label: 'Cards',
+                  icon: Icons.check_circle,
+                  value: '${widget.question.cardsKeep}',
+                  label: 'Keep',
                 ),
                 const SizedBox(width: 16),
                 _StatBox(

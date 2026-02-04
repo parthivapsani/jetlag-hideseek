@@ -140,16 +140,10 @@ class _QuestionBrowserState extends ConsumerState<QuestionBrowser>
       color: _getCategoryColor(category).withOpacity(0.1),
       child: Row(
         children: [
-          // Cost
-          _InfoChip(
-            icon: Icons.monetization_on,
-            label: '${category.defaultCoinCost} coins',
-          ),
-          const SizedBox(width: 12),
-          // Cards drawn
+          // Card reward
           _InfoChip(
             icon: Icons.style,
-            label: '${category.cardsDrawn} card${category.cardsDrawn > 1 ? 's' : ''}',
+            label: category.cardRewardText,
           ),
           const SizedBox(width: 12),
           // Response time

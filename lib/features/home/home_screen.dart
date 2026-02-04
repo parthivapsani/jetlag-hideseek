@@ -139,16 +139,16 @@ class HomeScreen extends ConsumerWidget {
               ),
               _ruleSection(
                 'Seeking Phase',
-                'Seekers ask questions to narrow down the Hider\'s location. Questions cost coins and give the Hider cards.',
+                'Seekers ask questions to narrow down the Hider\'s location. Each question lets the Hider draw cards.',
               ),
               _ruleSection(
                 'Questions',
-                '• Matching (30 coins): Which of these options matches?\n'
-                    '• Measuring (30 coins): Distance/direction to landmarks\n'
-                    '• Radar (25 coins): Within X distance of something?\n'
-                    '• Thermometer (20 coins): Hot/cold relative to guess\n'
-                    '• Tentacles (20 coins): Inside/outside drawn shapes\n'
-                    '• Photo (15 coins): Send a photo',
+                '• Matching (Draw 3, Keep 1): Is your X the same as ours?\n'
+                    '• Measuring (Draw 3, Keep 1): Are you closer to X than us?\n'
+                    '• Radar (Draw 2, Keep 1): Within X distance of us?\n'
+                    '• Thermometer (Draw 2, Keep 1): Warmer or colder?\n'
+                    '• Tentacles (Draw 4, Keep 2): Which X near us is closest to you?\n'
+                    '• Photo (Draw 1): Send a picture',
               ),
               _ruleSection(
                 'Cards',

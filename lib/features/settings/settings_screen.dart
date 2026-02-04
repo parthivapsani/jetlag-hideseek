@@ -304,8 +304,7 @@ class SettingsScreen extends ConsumerWidget {
               description:
                   'Seekers ask questions from 6 categories (Matching, Measuring, '
                   'Radar, Thermometer, Tentacles, Photo) to narrow down '
-                  'the Hider\'s location. Each question costs coins and gives '
-                  'the Hider cards.',
+                  'the Hider\'s location. Each question lets the Hider draw cards.',
             ),
             _HowToPlayStep(
               number: 5,
