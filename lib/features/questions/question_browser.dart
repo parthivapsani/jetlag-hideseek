@@ -20,7 +20,7 @@ class _QuestionBrowserState extends ConsumerState<QuestionBrowser>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     _tabController.addListener(() {
       setState(() {
         _selectedCategory = QuestionCategory.values[_tabController.index];

@@ -110,6 +110,17 @@ class _SeekerViewState extends ConsumerState<SeekerView> {
               ],
             ),
           ),
+          floatingActionButton: _selectedTab != 2 // Don't show on history tab
+              ? FloatingActionButton.extended(
+                  onPressed: () => context.push('/game/${widget.sessionId}/draft-question'),
+                  backgroundColor: JetLagTheme.primaryBlue,
+                  icon: const Icon(Icons.add, color: Colors.white),
+                  label: const Text(
+                    'Ask Question',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                )
+              : null,
           bottomNavigationBar: NavigationBar(
             selectedIndex: _selectedTab,
             onDestinationSelected: (index) => setState(() => _selectedTab = index),
