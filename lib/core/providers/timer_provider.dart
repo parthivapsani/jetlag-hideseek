@@ -244,5 +244,3 @@ final activeQuestionDeadlineProvider = StreamProvider<Duration?>((ref) {
   });
 });
 
-// We need this import for sessionQuestionsProvider
-import 'question_provider.dart';

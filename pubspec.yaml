@@ -47,8 +47,6 @@ dependencies:
   record: ^5.0.4
   audioplayers: ^5.2.1
 
-  # Payments (RevenueCat)
-  purchases_flutter: ^6.17.0
 
 dev_dependencies:
   flutter_test:
