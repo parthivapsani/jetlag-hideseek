@@ -188,6 +188,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     onTap: () => context.push('/settings'),
                     color: context.textSecondary,
                   ),
+                  const SizedBox(width: 32),
+                  _IconBtn(
+                    icon: Icons.admin_panel_settings_outlined,
+                    label: 'Admin',
+                    onTap: () => context.push('/admin'),
+                    color: context.textSecondary,
+                  ),
                 ],
               ),
               const SizedBox(height: 24),
