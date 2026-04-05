@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/models/models.dart';
+import '../../core/services/api_usage_service.dart';
 import '../../core/services/nominatim_service.dart';
 import '../../core/services/supabase_init.dart';
 import '../../design/widgets/widgets.dart';
@@ -396,6 +397,13 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
 
           const SizedBox(height: 28),
 
+          // ======= API Usage =======
+          _SectionHeader(title: 'API Usage', icon: Icons.data_usage),
+          const SizedBox(height: 12),
+          _ApiUsageWidget(),
+
+          const SizedBox(height: 28),
+
           // ======= Feature Requests =======
           _SectionHeader(title: 'Feature Requests', icon: Icons.lightbulb_outline),
           const SizedBox(height: 12),
@@ -768,6 +776,134 @@ class _FeatureRequestAdminCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ApiUsageWidget extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final statsAsync = ref.watch(apiUsageStatsProvider);
+
+    return statsAsync.when(
+      loading: () => const _LoadingWidget(),
+      error: (e, _) => _ErrorWidget(error: e.toString()),
+      data: (stats) {
+        if (stats == null) {
+          return _EmptyWidget(message: 'API tracking not available');
+        }
+
+        return JetlagCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Progress bar
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'This Month',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${stats.totalCostFormatted} / ${stats.freeTierFormatted}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: context.textSecondary,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: stats.usagePercent,
+                  minHeight: 8,
+                  backgroundColor: context.surface2,
+                  valueColor: AlwaysStoppedAnimation(
+                    stats.usagePercent > 0.8 ? context.red : context.accent,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Projection
+              Row(
+                children: [
+                  Icon(Icons.trending_up, size: 14, color: context.textTertiary),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Projected: ${stats.projectedCostFormatted}/mo',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: context.textSecondary,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${stats.totalCalls} total calls',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: context.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+
+              if (stats.byType.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                Divider(color: context.borderSubtle),
+                const SizedBox(height: 10),
+                ...stats.byType.map((t) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        children: [
+                          Text(
+                            t.displayName,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: context.textSecondary,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '${t.count}x',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: context.textTertiary,
+                              fontFeatures: const [FontFeature.tabularFigures()],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          SizedBox(
+                            width: 60,
+                            child: Text(
+                              t.costFormatted,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: context.textPrimary,
+                                fontFeatures: const [FontFeature.tabularFigures()],
+                              ),
+                              textAlign: TextAlign.right,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 }
