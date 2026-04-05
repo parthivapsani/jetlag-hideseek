@@ -67,9 +67,9 @@ flutter:
     - assets/images/
     - assets/data/
 
-  fonts:
-    - family: JetLag
-      fonts:
-        - asset: assets/fonts/JetLag-Regular.ttf
-        - asset: assets/fonts/JetLag-Bold.ttf
-          weight: 700
+  # fonts:
+  #   - family: JetLag
+  #     fonts:
+  #       - asset: assets/fonts/JetLag-Regular.ttf
+  #       - asset: assets/fonts/JetLag-Bold.ttf
+  #         weight: 700

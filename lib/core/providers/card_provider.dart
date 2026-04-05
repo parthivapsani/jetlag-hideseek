@@ -20,6 +20,7 @@ final hiderCardsProvider = StreamProvider<List<HiderCard>>((ref) {
 
   final service = ref.watch(supabaseServiceProvider);
   final realtime = ref.watch(realtimeServiceProvider);
+  if (service == null || realtime == null) return Stream.value([]);
 
   return _cardsStream(service, realtime, sessionId);
 });
@@ -61,6 +62,7 @@ final activeCursesProvider = StreamProvider<List<ActiveCurse>>((ref) {
 
   final service = ref.watch(supabaseServiceProvider);
   final realtime = ref.watch(realtimeServiceProvider);
+  if (service == null || realtime == null) return Stream.value([]);
 
   return _cursesStream(service, realtime, sessionId);
 });
@@ -95,6 +97,7 @@ final timeTrapsProvider = FutureProvider<List<PlacedTimeTrap>>((ref) async {
   if (sessionId == null) return [];
 
   final service = ref.watch(supabaseServiceProvider);
+  if (service == null) return [];
   return service.getTimeTraps(sessionId);
 });
 
@@ -183,6 +186,7 @@ final effectiveHidingTimeProvider = Provider<Duration>((ref) {
 
 final cardActionsProvider = Provider<CardActions>((ref) {
   final service = ref.watch(supabaseServiceProvider);
+  if (service == null) throw Exception('Supabase not initialized');
   return CardActions(ref, service);
 });
 

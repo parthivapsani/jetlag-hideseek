@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/models.dart';
 import 'game_provider.dart';
 import 'card_provider.dart';
+import 'question_provider.dart';
 
 // ============ Timer State ============
 

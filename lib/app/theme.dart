@@ -68,7 +68,7 @@ class JetLagTheme {
       ),
 
       // Cards
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 0,
         color: lightCard,
         shape: RoundedRectangleBorder(
@@ -176,7 +176,7 @@ class JetLagTheme {
       ),
 
       // Dialogs
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         elevation: 8,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
@@ -285,7 +285,7 @@ class JetLagTheme {
       ),
 
       // Cards
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 0,
         color: darkCard,
         shape: RoundedRectangleBorder(
@@ -393,7 +393,7 @@ class JetLagTheme {
       ),
 
       // Dialogs
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         elevation: 8,
         backgroundColor: darkCard,
         shape: RoundedRectangleBorder(

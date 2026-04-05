@@ -137,7 +137,7 @@ class _SpectatorViewState extends ConsumerState<SpectatorView> {
         const SizedBox(width: 8),
         GestureDetector(
           onTap: () async {
-            await ref.read(gameActionsProvider).leaveSession();
+            await ref.read(gameActionsProvider)!.leaveSession();
             if (mounted) context.go('/');
           },
           child: const Icon(Icons.exit_to_app,

@@ -49,7 +49,7 @@ class _HiderViewState extends ConsumerState<HiderView> {
     final locationService = ref.read(locationServiceProvider);
     locationService.startTracking(
       onPosition: (position) {
-        ref.read(gameActionsProvider).updateLocation(
+        ref.read(gameActionsProvider)!.updateLocation(
               position.latitude,
               position.longitude,
             );
@@ -487,7 +487,7 @@ class _HiderViewState extends ConsumerState<HiderView> {
               subtitle: const Text('End hiding period early'),
               onTap: () {
                 Navigator.pop(context);
-                ref.read(gameActionsProvider).startSeeking();
+                ref.read(gameActionsProvider)!.startSeeking();
               },
             ),
           ListTile(
@@ -495,7 +495,7 @@ class _HiderViewState extends ConsumerState<HiderView> {
             title: const Text('Pause Game'),
             onTap: () {
               Navigator.pop(context);
-              ref.read(gameActionsProvider).pauseGame();
+              ref.read(gameActionsProvider)!.pauseGame();
             },
           ),
           ListTile(
@@ -532,7 +532,7 @@ class _HiderViewState extends ConsumerState<HiderView> {
             onPressed: () {
               Navigator.pop(context);
               final seekers = ref.read(seekersProvider);
-              ref.read(gameActionsProvider).endGame(
+              ref.read(gameActionsProvider)!.endGame(
                     winnerId: seekers.isNotEmpty ? seekers.first.id : null,
                   );
             },

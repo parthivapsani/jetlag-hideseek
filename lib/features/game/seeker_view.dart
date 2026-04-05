@@ -34,7 +34,7 @@ class _SeekerViewState extends ConsumerState<SeekerView> {
     final locationService = ref.read(locationServiceProvider);
     locationService.startTracking(
       onPosition: (position) {
-        ref.read(gameActionsProvider).updateLocation(
+        ref.read(gameActionsProvider)!.updateLocation(
               position.latitude,
               position.longitude,
             );
@@ -424,7 +424,7 @@ class _SeekerViewState extends ConsumerState<SeekerView> {
             title: const Text('Pause Game'),
             onTap: () {
               Navigator.pop(context);
-              ref.read(gameActionsProvider).pauseGame();
+              ref.read(gameActionsProvider)!.pauseGame();
             },
           ),
           ListTile(
@@ -432,7 +432,7 @@ class _SeekerViewState extends ConsumerState<SeekerView> {
             title: const Text('Leave Game'),
             onTap: () async {
               Navigator.pop(context);
-              await ref.read(gameActionsProvider).leaveSession();
+              await ref.read(gameActionsProvider)!.leaveSession();
               if (mounted) this.context.go('/');
             },
           ),

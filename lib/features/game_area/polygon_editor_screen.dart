@@ -679,10 +679,10 @@ class _PolygonEditorScreenState extends ConsumerState<PolygonEditorScreen> {
         defaultZoom: _zoom,
       );
 
-      final savedArea = await ref.read(gameAreaActionsProvider).saveGameArea(gameArea);
+      final savedArea = await ref.read(gameAreaActionsProvider)!.saveGameArea(gameArea);
 
       // Create session
-      final session = await ref.read(gameActionsProvider).createSession(
+      final session = await ref.read(gameActionsProvider)!.createSession(
         gameAreaId: savedArea.id,
         hidingPeriodSeconds: settings.hidingDuration.inSeconds,
         zoneRadiusMeters: settings.zoneRadius,

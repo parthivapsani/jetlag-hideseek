@@ -1,5 +1,6 @@
-import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -7,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/models/models.dart';
 import '../../core/providers/providers.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/services/supabase_init.dart';
 import '../../design/colors.dart';
 import '../../design/theme.dart';
 import '../../design/widgets/jetlag_badge.dart';
@@ -27,7 +29,8 @@ class AnswerInterface extends ConsumerStatefulWidget {
 class _AnswerInterfaceState extends ConsumerState<AnswerInterface> {
   final _textController = TextEditingController();
   String? _selectedOption;
-  File? _photoFile;
+  XFile? _photoFile;
+  Uint8List? _photoBytes;
   bool _isSubmitting = false;
 
   @override
@@ -219,11 +222,11 @@ class _AnswerInterfaceState extends ConsumerState<AnswerInterface> {
       case AnswerType.photo:
         return Column(
           children: [
-            if (_photoFile != null) ...[
+            if (_photoBytes != null) ...[
               ClipRRect(
                 borderRadius: BorderRadius.circular(JetlagRadii.lg),
-                child: Image.file(
-                  _photoFile!,
+                child: Image.memory(
+                  _photoBytes!,
                   height: 200,
                   width: double.infinity,
                   fit: BoxFit.cover,
@@ -314,7 +317,7 @@ class _AnswerInterfaceState extends ConsumerState<AnswerInterface> {
       case AnswerType.direction:
         return _selectedOption != null;
       case AnswerType.photo:
-        return _photoFile != null;
+        return _photoBytes != null;
     }
   }
 
@@ -322,8 +325,10 @@ class _AnswerInterfaceState extends ConsumerState<AnswerInterface> {
     final picker = ImagePicker();
     final image = await picker.pickImage(source: source, imageQuality: 80);
     if (image != null) {
+      final bytes = await image.readAsBytes();
       setState(() {
-        _photoFile = File(image.path);
+        _photoFile = image;
+        _photoBytes = bytes;
       });
     }
   }
@@ -346,8 +351,8 @@ class _AnswerInterfaceState extends ConsumerState<AnswerInterface> {
           answerText = _selectedOption;
           break;
         case AnswerType.photo:
-          if (_photoFile != null) {
-            final service = ref.read(supabaseServiceProvider);
+          if (_photoFile != null && _photoBytes != null) {
+            final service = ref.read(supabaseServiceProvider)!;
             final sessionId = ref.read(currentSessionIdProvider);
             answerPhotoUrl = await service.uploadPhoto(
               sessionId!,

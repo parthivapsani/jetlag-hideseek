@@ -28,6 +28,7 @@ final sessionQuestionsProvider = StreamProvider<List<SessionQuestion>>((ref) {
 
   final service = ref.watch(supabaseServiceProvider);
   final realtime = ref.watch(realtimeServiceProvider);
+  if (service == null || realtime == null) return Stream.value([]);
 
   return _questionsStream(service, realtime, sessionId);
 });
@@ -130,6 +131,7 @@ final testModeProvider = StateProvider<bool>((ref) => false);
 
 final questionActionsProvider = Provider<QuestionActions>((ref) {
   final service = ref.watch(supabaseServiceProvider);
+  if (service == null) throw Exception('Supabase not initialized');
   return QuestionActions(ref, service);
 });
 

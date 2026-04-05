@@ -296,7 +296,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     });
 
     try {
-      final authActions = ref.read(authActionsProvider);
+      final authActions = ref.read(authActionsProvider)!;
 
       if (_isSignUp) {
         await authActions.signUpWithEmail(
@@ -350,7 +350,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   Future<void> _signOut() async {
     try {
-      await ref.read(authActionsProvider).signOut();
+      await ref.read(authActionsProvider)!.signOut();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -370,7 +370,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     }
 
     try {
-      await ref.read(authActionsProvider).resetPassword(email);
+      await ref.read(authActionsProvider)!.resetPassword(email);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Password reset email sent')),

@@ -216,7 +216,7 @@ class _JoinGameScreenState extends ConsumerState<JoinGameScreen> {
       await ref.read(displayNameProvider.notifier).setDisplayName(name);
 
       // Join session by code
-      final gameActions = ref.read(gameActionsProvider);
+      final gameActions = ref.read(gameActionsProvider)!;
       final session = await gameActions.joinSessionByCode(code);
 
       if (session == null) {

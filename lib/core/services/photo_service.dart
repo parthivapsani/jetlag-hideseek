@@ -1,16 +1,16 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 
-/// Service for capturing and managing photos
+/// Service for capturing and managing photos (web-compatible, no dart:io)
 class PhotoService {
   final ImagePicker _picker = ImagePicker();
 
   /// Capture a photo using the camera
-  Future<File?> capturePhoto({
+  /// Returns an XFile (works on both web and mobile)
+  Future<XFile?> capturePhoto({
     int maxWidth = 1920,
     int maxHeight = 1080,
     int quality = 85,
@@ -24,9 +24,7 @@ class PhotoService {
         preferredCameraDevice: CameraDevice.rear,
       );
 
-      if (image == null) return null;
-
-      return File(image.path);
+      return image;
     } catch (e) {
       debugPrint('Error capturing photo: $e');
       return null;
@@ -34,7 +32,7 @@ class PhotoService {
   }
 
   /// Pick a photo from the gallery
-  Future<File?> pickFromGallery({
+  Future<XFile?> pickFromGallery({
     int maxWidth = 1920,
     int maxHeight = 1080,
     int quality = 85,
@@ -47,66 +45,20 @@ class PhotoService {
         imageQuality: quality,
       );
 
-      if (image == null) return null;
-
-      return File(image.path);
+      return image;
     } catch (e) {
       debugPrint('Error picking photo: $e');
       return null;
     }
   }
 
-  /// Save photo to app's document directory
-  Future<File?> savePhoto(File photo, String filename) async {
+  /// Read photo bytes from an XFile
+  Future<Uint8List?> readPhotoBytes(XFile photo) async {
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final photosDir = Directory('${directory.path}/photos');
-
-      if (!await photosDir.exists()) {
-        await photosDir.create(recursive: true);
-      }
-
-      final savedPath = '${photosDir.path}/$filename';
-      return await photo.copy(savedPath);
+      return await photo.readAsBytes();
     } catch (e) {
-      debugPrint('Error saving photo: $e');
+      debugPrint('Error reading photo bytes: $e');
       return null;
-    }
-  }
-
-  /// Delete a saved photo
-  Future<bool> deletePhoto(String path) async {
-    try {
-      final file = File(path);
-      if (await file.exists()) {
-        await file.delete();
-        return true;
-      }
-      return false;
-    } catch (e) {
-      debugPrint('Error deleting photo: $e');
-      return false;
-    }
-  }
-
-  /// Get all saved photos
-  Future<List<File>> getSavedPhotos() async {
-    try {
-      final directory = await getApplicationDocumentsDirectory();
-      final photosDir = Directory('${directory.path}/photos');
-
-      if (!await photosDir.exists()) {
-        return [];
-      }
-
-      final files = await photosDir.list().toList();
-      return files
-          .whereType<File>()
-          .where((f) => f.path.endsWith('.jpg') || f.path.endsWith('.png'))
-          .toList();
-    } catch (e) {
-      debugPrint('Error listing photos: $e');
-      return [];
     }
   }
 }

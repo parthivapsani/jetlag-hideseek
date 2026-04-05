@@ -21,7 +21,7 @@ class JetlagTheme {
         onSurface: JetlagColors.darkText,
         onPrimary: Colors.white,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: JetlagColors.darkSurface,
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -85,7 +85,7 @@ class JetlagTheme {
         onSurface: JetlagColors.lightText,
         onPrimary: Colors.white,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: JetlagColors.lightSurface,
         elevation: 0,
         shape: RoundedRectangleBorder(
