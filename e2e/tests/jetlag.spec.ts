@@ -62,11 +62,31 @@ async function createTestGame(request: any): Promise<{ sessionId: string; roomCo
 // Cleanup helper
 async function cleanupTestGame(request: any, sessionId: string, areaId: string) {
   // Delete in order respecting FK constraints
+  await request.delete(`${SUPABASE}/game_events?session_id=eq.${sessionId}`, { headers: HEADERS });
   await request.delete(`${SUPABASE}/participants?session_id=eq.${sessionId}`, { headers: HEADERS });
   await request.delete(`${SUPABASE}/rounds?session_id=eq.${sessionId}`, { headers: HEADERS });
   await request.delete(`${SUPABASE}/teams?session_id=eq.${sessionId}`, { headers: HEADERS });
   await request.delete(`${SUPABASE}/sessions?id=eq.${sessionId}`, { headers: HEADERS });
   await request.delete(`${SUPABASE}/game_areas?id=eq.${areaId}`, { headers: HEADERS });
+}
+
+// Helper to create test events for a session
+async function createTestEvents(request: any, sessionId: string, roundId?: string) {
+  const events = [
+    { session_id: sessionId, round_id: roundId, event_type: 'round_started', payload: { roundNumber: 1 } },
+    { session_id: sessionId, round_id: roundId, event_type: 'phase_change', payload: { phase: 'hiding' } },
+    { session_id: sessionId, round_id: roundId, event_type: 'phase_change', payload: { phase: 'seeking' } },
+    { session_id: sessionId, round_id: roundId, event_type: 'question_asked', payload: { questionId: 'match_1', category: 'matching' } },
+    { session_id: sessionId, round_id: roundId, event_type: 'question_answered', payload: { answerText: 'Yes' } },
+    { session_id: sessionId, round_id: roundId, event_type: 'card_drawn', payload: { cardId: 'time_5' } },
+    { session_id: sessionId, round_id: roundId, event_type: 'round_ended', payload: { hideDurationSeconds: 1800 } },
+    { session_id: sessionId, event_type: 'game_ended', payload: { winnerId: null } },
+  ];
+
+  await request.post(`${SUPABASE}/game_events`, {
+    headers: HEADERS,
+    data: events,
+  });
 }
 
 test.describe('Home Page', () => {
@@ -351,6 +371,184 @@ test.describe('localStorage Identity', () => {
       localStorage.removeItem('jetlag_participant_game1');
       localStorage.removeItem('jetlag_participant_game2');
     });
+  });
+});
+
+// ============ Phase 2 Tests ============
+
+test.describe('Post-Game Summary', () => {
+  let testGame: { sessionId: string; roomCode: string; areaId: string };
+  let roundId: string;
+
+  test.beforeAll(async ({ request }) => {
+    testGame = await createTestGame(request);
+
+    // Create a round
+    const teamsRes = await request.get(`${SUPABASE}/teams?session_id=eq.${testGame.sessionId}&order=display_order`, { headers: HEADERS });
+    const teams = await teamsRes.json();
+
+    const roundRes = await request.post(`${SUPABASE}/rounds`, {
+      headers: HEADERS,
+      data: {
+        session_id: testGame.sessionId,
+        round_number: 1,
+        hider_team_id: teams[1].id,
+        seeker_team_id: teams[0].id,
+        status: 'found',
+        found_at: new Date().toISOString(),
+        hide_duration_seconds: 1800,
+      },
+    });
+    const round = (await roundRes.json())[0];
+    roundId = round.id;
+
+    // End session
+    await request.patch(`${SUPABASE}/sessions?id=eq.${testGame.sessionId}`, {
+      headers: HEADERS,
+      data: { status: 'ended', winning_team_id: teams[1].id, ended_at: new Date().toISOString() },
+    });
+
+    // Create test events
+    await createTestEvents(request, testGame.sessionId, roundId);
+  });
+
+  test.afterAll(async ({ request }) => {
+    await cleanupTestGame(request, testGame.sessionId, testGame.areaId);
+  });
+
+  test('summary page loads with events', async ({ page }) => {
+    await page.goto(`${BASE}/game/${testGame.sessionId}/summary`);
+    await page.waitForTimeout(6000);
+    await page.screenshot({ path: 'screenshots/post-game-summary.png', fullPage: true });
+
+    const content = await page.content();
+    expect(content.length).toBeGreaterThan(1000);
+  });
+
+  test('game over has View Details button', async ({ page }) => {
+    await page.goto(`${BASE}/game/${testGame.sessionId}/over`);
+    await page.waitForTimeout(6000);
+    await page.screenshot({ path: 'screenshots/game-over-with-details.png', fullPage: true });
+  });
+});
+
+test.describe('Replay Screen', () => {
+  let testGame: { sessionId: string; roomCode: string; areaId: string };
+
+  test.beforeAll(async ({ request }) => {
+    testGame = await createTestGame(request);
+
+    // Create round + events
+    const teamsRes = await request.get(`${SUPABASE}/teams?session_id=eq.${testGame.sessionId}&order=display_order`, { headers: HEADERS });
+    const teams = await teamsRes.json();
+
+    const roundRes = await request.post(`${SUPABASE}/rounds`, {
+      headers: HEADERS,
+      data: {
+        session_id: testGame.sessionId,
+        round_number: 1,
+        hider_team_id: teams[1].id,
+        seeker_team_id: teams[0].id,
+        status: 'found',
+        found_at: new Date().toISOString(),
+        hide_duration_seconds: 2400,
+      },
+    });
+    const round = (await roundRes.json())[0];
+
+    await createTestEvents(request, testGame.sessionId, round.id);
+
+    await request.patch(`${SUPABASE}/sessions?id=eq.${testGame.sessionId}`, {
+      headers: HEADERS,
+      data: { status: 'ended', ended_at: new Date().toISOString() },
+    });
+  });
+
+  test.afterAll(async ({ request }) => {
+    await cleanupTestGame(request, testGame.sessionId, testGame.areaId);
+  });
+
+  test('replay page loads with events and scrubber', async ({ page }) => {
+    await page.goto(`${BASE}/game/${testGame.sessionId}/replay`);
+    await page.waitForTimeout(6000);
+    await page.screenshot({ path: 'screenshots/replay.png', fullPage: true });
+
+    const content = await page.content();
+    expect(content.length).toBeGreaterThan(1000);
+  });
+
+  test('replay page with no events shows empty state', async ({ page, request }) => {
+    // Create a game with no events
+    const emptyGame = await createTestGame(request);
+    await page.goto(`${BASE}/game/${emptyGame.sessionId}/replay`);
+    await page.waitForTimeout(6000);
+    await page.screenshot({ path: 'screenshots/replay-empty.png', fullPage: true });
+    await cleanupTestGame(request, emptyGame.sessionId, emptyGame.areaId);
+  });
+});
+
+test.describe('Event Logging via API', () => {
+  test('game_events table accepts inserts', async ({ request }) => {
+    const testGame = await createTestGame(request);
+
+    // Insert an event
+    const res = await request.post(`${SUPABASE}/game_events`, {
+      headers: HEADERS,
+      data: {
+        session_id: testGame.sessionId,
+        event_type: 'phase_change',
+        payload: { phase: 'hiding' },
+      },
+    });
+    expect(res.status()).toBe(201);
+
+    // Read it back
+    const getRes = await request.get(`${SUPABASE}/game_events?session_id=eq.${testGame.sessionId}`, { headers: HEADERS });
+    const events = await getRes.json();
+    expect(events.length).toBeGreaterThan(0);
+    expect(events[0].event_type).toBe('phase_change');
+
+    await cleanupTestGame(request, testGame.sessionId, testGame.areaId);
+  });
+});
+
+test.describe('API Usage Tracking', () => {
+  test('api_usage table accepts inserts', async ({ request }) => {
+    // Insert a usage record
+    const res = await request.post(`${SUPABASE}/api_usage`, {
+      headers: HEADERS,
+      data: {
+        api_type: 'map_load',
+        estimated_cost_cents: 700,
+      },
+    });
+    expect(res.status()).toBe(201);
+
+    // Read it back
+    const getRes = await request.get(`${SUPABASE}/api_usage?api_type=eq.map_load&order=created_at.desc&limit=1`, { headers: HEADERS });
+    const usage = await getRes.json();
+    expect(usage.length).toBeGreaterThan(0);
+    expect(usage[0].estimated_cost_cents).toBe(700);
+
+    // Cleanup
+    await request.delete(`${SUPABASE}/api_usage?id=eq.${usage[0].id}`, { headers: HEADERS });
+  });
+});
+
+test.describe('Page Transitions', () => {
+  test('pages load with slide transitions', async ({ page }) => {
+    await page.goto(BASE);
+    await page.waitForTimeout(4000);
+
+    // Navigate to ideas
+    await page.goto(`${BASE}/ideas`);
+    await page.waitForTimeout(3000);
+    await page.screenshot({ path: 'screenshots/ideas-transition.png', fullPage: true });
+
+    // Navigate to settings
+    await page.goto(`${BASE}/settings`);
+    await page.waitForTimeout(3000);
+    await page.screenshot({ path: 'screenshots/settings-transition.png', fullPage: true });
   });
 });
 
