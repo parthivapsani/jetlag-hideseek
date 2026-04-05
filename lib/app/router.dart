@@ -17,6 +17,31 @@ import '../features/admin/admin_screen.dart';
 import '../features/game/post_game_summary.dart';
 import '../features/replay/replay_screen.dart';
 
+/// Shared horizontal slide + fade transition for all routes.
+CustomTransitionPage<void> _slidePage(Widget child, GoRouterState state) {
+  return CustomTransitionPage(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 250),
+    reverseTransitionDuration: const Duration(milliseconds: 200),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return SlideTransition(
+        position: Tween(
+          begin: const Offset(1, 0),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+        )),
+        child: FadeTransition(
+          opacity: CurvedAnimation(parent: animation, curve: Curves.easeIn),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
@@ -29,99 +54,111 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/create-game',
         name: 'create-game',
-        builder: (context, state) => const PolygonEditorScreen(),
+        pageBuilder: (context, state) =>
+            _slidePage(const PolygonEditorScreen(), state),
       ),
-      // Game lobby via nanoid
       GoRoute(
         path: '/g/:code',
         name: 'lobby',
-        builder: (context, state) => LobbyScreen(
-          sessionCode: state.pathParameters['code']!,
+        pageBuilder: (context, state) => _slidePage(
+          LobbyScreen(sessionCode: state.pathParameters['code']!),
+          state,
         ),
       ),
-      // Backwards compat: /join/:code redirects to /g/:code
       GoRoute(
         path: '/join/:code',
         redirect: (context, state) => '/g/${state.pathParameters['code']}',
       ),
-      // Legacy lobby route by session ID
       GoRoute(
         path: '/lobby/:sessionId',
         name: 'lobby-legacy',
-        builder: (context, state) => LobbyScreen(
-          sessionId: state.pathParameters['sessionId']!,
+        pageBuilder: (context, state) => _slidePage(
+          LobbyScreen(sessionId: state.pathParameters['sessionId']!),
+          state,
         ),
       ),
       GoRoute(
         path: '/game/:sessionId/seeker',
         name: 'seeker',
-        builder: (context, state) => SeekerView(
-          sessionId: state.pathParameters['sessionId']!,
+        pageBuilder: (context, state) => _slidePage(
+          SeekerView(sessionId: state.pathParameters['sessionId']!),
+          state,
         ),
       ),
       GoRoute(
         path: '/game/:sessionId/hider',
         name: 'hider',
-        builder: (context, state) => HiderView(
-          sessionId: state.pathParameters['sessionId']!,
+        pageBuilder: (context, state) => _slidePage(
+          HiderView(sessionId: state.pathParameters['sessionId']!),
+          state,
         ),
       ),
       GoRoute(
         path: '/game/:sessionId/spectator',
         name: 'spectator',
-        builder: (context, state) => SpectatorView(
-          sessionId: state.pathParameters['sessionId']!,
+        pageBuilder: (context, state) => _slidePage(
+          SpectatorView(sessionId: state.pathParameters['sessionId']!),
+          state,
         ),
       ),
       GoRoute(
         path: '/game/:sessionId/round-summary',
         name: 'round-summary',
-        builder: (context, state) => RoundSummaryScreen(
-          sessionId: state.pathParameters['sessionId']!,
+        pageBuilder: (context, state) => _slidePage(
+          RoundSummaryScreen(sessionId: state.pathParameters['sessionId']!),
+          state,
         ),
       ),
       GoRoute(
         path: '/game/:sessionId/over',
         name: 'game-over',
-        builder: (context, state) => GameOverScreen(
-          sessionId: state.pathParameters['sessionId']!,
+        pageBuilder: (context, state) => _slidePage(
+          GameOverScreen(sessionId: state.pathParameters['sessionId']!),
+          state,
         ),
       ),
       GoRoute(
         path: '/game/:sessionId/summary',
         name: 'game-summary',
-        builder: (context, state) => PostGameSummary(
-          sessionId: state.pathParameters['sessionId']!,
+        pageBuilder: (context, state) => _slidePage(
+          PostGameSummary(sessionId: state.pathParameters['sessionId']!),
+          state,
         ),
       ),
       GoRoute(
         path: '/game/:sessionId/replay',
         name: 'game-replay',
-        builder: (context, state) => ReplayScreen(
-          sessionId: state.pathParameters['sessionId']!,
+        pageBuilder: (context, state) => _slidePage(
+          ReplayScreen(sessionId: state.pathParameters['sessionId']!),
+          state,
         ),
       ),
       GoRoute(
         path: '/settings',
         name: 'settings',
-        builder: (context, state) => const SettingsScreen(),
+        pageBuilder: (context, state) =>
+            _slidePage(const SettingsScreen(), state),
       ),
       GoRoute(
         path: '/game/:sessionId/draft-question',
         name: 'draft-question',
-        builder: (context, state) => QuestionDraftingScreen(
-          sessionId: state.pathParameters['sessionId']!,
+        pageBuilder: (context, state) => _slidePage(
+          QuestionDraftingScreen(
+              sessionId: state.pathParameters['sessionId']!),
+          state,
         ),
       ),
       GoRoute(
         path: '/ideas',
         name: 'ideas',
-        builder: (context, state) => const FeatureRequestsScreen(),
+        pageBuilder: (context, state) =>
+            _slidePage(const FeatureRequestsScreen(), state),
       ),
       GoRoute(
         path: '/admin',
         name: 'admin',
-        builder: (context, state) => const AdminScreen(),
+        pageBuilder: (context, state) =>
+            _slidePage(const AdminScreen(), state),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
