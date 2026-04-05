@@ -14,6 +14,7 @@ import '../features/settings/settings_screen.dart';
 import '../features/questions/question_drafting_screen.dart';
 import '../features/feature_requests/feature_requests_screen.dart';
 import '../features/admin/admin_screen.dart';
+import '../features/game/post_game_summary.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -82,6 +83,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/game/:sessionId/over',
         name: 'game-over',
         builder: (context, state) => GameOverScreen(
+          sessionId: state.pathParameters['sessionId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/game/:sessionId/summary',
+        name: 'game-summary',
+        builder: (context, state) => PostGameSummary(
           sessionId: state.pathParameters['sessionId']!,
         ),
       ),

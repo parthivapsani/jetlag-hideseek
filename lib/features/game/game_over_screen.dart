@@ -301,20 +301,34 @@ class GameOverScreen extends ConsumerWidget {
           ),
         ),
 
-        // Home button
+        // Action buttons
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-          child: SizedBox(
-            width: double.infinity,
-            child: JetlagButton(
-              label: 'Home',
-              icon: Icons.home_outlined,
-              variant: JetlagButtonVariant.secondary,
-              onPressed: () async {
-                await ref.read(gameActionsProvider)?.leaveSession();
-                if (context.mounted) context.go('/');
-              },
-            ),
+          child: Column(
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: JetlagButton(
+                  label: 'View Details',
+                  icon: Icons.analytics_outlined,
+                  variant: JetlagButtonVariant.primary,
+                  onPressed: () => context.push('/game/${session.id}/summary'),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: JetlagButton(
+                  label: 'Home',
+                  icon: Icons.home_outlined,
+                  variant: JetlagButtonVariant.secondary,
+                  onPressed: () async {
+                    await ref.read(gameActionsProvider)?.leaveSession();
+                    if (context.mounted) context.go('/');
+                  },
+                ),
+              ),
+            ],
           ),
         ),
       ],

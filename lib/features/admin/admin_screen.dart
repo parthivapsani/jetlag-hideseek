@@ -647,6 +647,24 @@ class _EndedSessionCard extends StatelessWidget {
             ].join('  \u2022  '),
             style: Theme.of(context).textTheme.bodySmall,
           ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              JetlagButton(
+                label: 'Stats',
+                icon: Icons.analytics_outlined,
+                variant: JetlagButtonVariant.secondary,
+                onPressed: () => context.push('/game/${session.id}/summary'),
+              ),
+              const SizedBox(width: 8),
+              JetlagButton(
+                label: 'Replay',
+                icon: Icons.replay,
+                variant: JetlagButtonVariant.secondary,
+                onPressed: () => context.push('/game/${session.id}/replay'),
+              ),
+            ],
+          ),
         ],
       ),
     );
