@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/models/models.dart';
 import '../../core/providers/providers.dart';
-import '../../app/theme.dart';
+import '../../design/widgets/widgets.dart';
+import '../../design/theme.dart';
+import '../../design/colors.dart';
 
 class LobbyScreen extends ConsumerStatefulWidget {
   final String sessionId;
@@ -18,7 +20,6 @@ class LobbyScreen extends ConsumerStatefulWidget {
 
 class _LobbyScreenState extends ConsumerState<LobbyScreen> {
   bool _hasJoined = false;
-  ParticipantRole _selectedRole = ParticipantRole.seeker;
 
   @override
   void initState() {
@@ -30,7 +31,9 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
   Widget build(BuildContext context) {
     final sessionAsync = ref.watch(currentSessionProvider);
     final participantsAsync = ref.watch(participantsProvider);
+    final teamsAsync = ref.watch(teamsProvider);
     final currentParticipant = ref.watch(currentParticipantProvider);
+    final balanced = ref.watch(teamsBalancedProvider);
 
     return sessionAsync.when(
       loading: () => const Scaffold(
@@ -46,11 +49,13 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('Game not found'),
+                  Text('Game not found',
+                      style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 16),
-                  ElevatedButton(
+                  JetlagButton(
+                    label: 'Go Home',
+                    variant: JetlagButtonVariant.secondary,
                     onPressed: () => context.go('/'),
-                    child: const Text('Go Home'),
                   ),
                 ],
               ),
@@ -59,65 +64,58 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
         }
 
         // Redirect if game has started
-        if (session.status != SessionStatus.waiting && currentParticipant != null) {
+        if (session.status != SessionStatus.waiting &&
+            currentParticipant != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _navigateToGame(currentParticipant.role);
           });
         }
 
         return Scaffold(
-          appBar: AppBar(
-            title: const Text('Game Lobby'),
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => _leaveLobby(),
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.copy),
-                onPressed: () => _copyRoomCode(session.roomCode),
-                tooltip: 'Copy room code',
-              ),
-            ],
-          ),
-          body: Column(
-            children: [
-              // Room Code Display
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
-                color: Theme.of(context).colorScheme.primaryContainer,
-                child: Column(
-                  children: [
-                    const Text('Room Code'),
-                    const SizedBox(height: 8),
-                    Text(
-                      session.roomCode,
-                      style: const TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 8,
+          body: SafeArea(
+            child: Column(
+              children: [
+                // Back button row
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: _leaveLobby,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Share this code with other players',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
+                      const Spacer(),
+                    ],
+                  ),
                 ),
-              ),
 
-              Expanded(
-                child: !_hasJoined
-                    ? _buildJoinSection()
-                    : _buildParticipantsList(participantsAsync, currentParticipant),
-              ),
+                // Room code header
+                _RoomCodeHeader(
+                  roomCode: session.roomCode,
+                  onCopy: () => _copyRoomCode(session.roomCode),
+                ),
 
-              // Start Game Button (host only)
-              if (_hasJoined && currentParticipant?.isHost == true)
-                _buildStartButton(participantsAsync),
-            ],
+                const SizedBox(height: 16),
+
+                // Main content
+                Expanded(
+                  child: !_hasJoined
+                      ? _buildJoinSection()
+                      : _buildTeamLayout(
+                          teamsAsync, participantsAsync, currentParticipant),
+                ),
+
+                // Unassigned players
+                if (_hasJoined)
+                  _buildUnassignedPlayers(
+                      participantsAsync, teamsAsync, currentParticipant),
+
+                // Start button (host only)
+                if (_hasJoined && currentParticipant?.isHost == true)
+                  _buildStartButton(balanced),
+              ],
+            ),
           ),
         );
       },
@@ -131,116 +129,178 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Select Your Role',
-            style: Theme.of(context).textTheme.titleLarge,
+            'Ready to join?',
+            style: Theme.of(context).textTheme.headlineMedium,
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 24),
-
-          // Role Selection
-          _RoleCard(
-            role: ParticipantRole.seeker,
-            isSelected: _selectedRole == ParticipantRole.seeker,
-            onTap: () => setState(() => _selectedRole = ParticipantRole.seeker),
-          ),
-          const SizedBox(height: 12),
-          _RoleCard(
-            role: ParticipantRole.hider,
-            isSelected: _selectedRole == ParticipantRole.hider,
-            onTap: () => setState(() => _selectedRole = ParticipantRole.hider),
-          ),
-          const SizedBox(height: 12),
-          _RoleCard(
-            role: ParticipantRole.spectator,
-            isSelected: _selectedRole == ParticipantRole.spectator,
-            onTap: () => setState(() => _selectedRole = ParticipantRole.spectator),
+          const SizedBox(height: 8),
+          Text(
+            'You will be assigned to a team in the lobby.',
+            style: Theme.of(context).textTheme.bodyMedium,
+            textAlign: TextAlign.center,
           ),
           const Spacer(),
-
-          ElevatedButton(
+          JetlagButton(
+            label: 'Join Game',
             onPressed: _joinGame,
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-            child: const Text('Join Game', style: TextStyle(fontSize: 18)),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildParticipantsList(
+  Widget _buildTeamLayout(
+    AsyncValue<List<Team>> teamsAsync,
     AsyncValue<List<Participant>> participantsAsync,
     Participant? currentParticipant,
   ) {
-    return participantsAsync.when(
+    return teamsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => Center(child: Text('Error: $error')),
-      data: (participants) {
-        final hiders = participants.where((p) => p.role == ParticipantRole.hider).toList();
-        final seekers = participants.where((p) => p.role == ParticipantRole.seeker).toList();
-        final spectators = participants.where((p) => p.role == ParticipantRole.spectator).toList();
+      data: (teams) {
+        return participantsAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => Center(child: Text('Error: $error')),
+          data: (participants) {
+            if (teams.length < 2) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            if (hiders.isNotEmpty) ...[
-              _buildRoleHeader('Hider', JetLagTheme.hiderGreen, hiders.length),
-              ...hiders.map((p) => _ParticipantTile(
-                    participant: p,
-                    isCurrentUser: p.id == currentParticipant?.id,
-                  )),
-              const SizedBox(height: 16),
-            ],
-            if (seekers.isNotEmpty) ...[
-              _buildRoleHeader('Seekers', JetLagTheme.seekerRed, seekers.length),
-              ...seekers.map((p) => _ParticipantTile(
-                    participant: p,
-                    isCurrentUser: p.id == currentParticipant?.id,
-                  )),
-              const SizedBox(height: 16),
-            ],
-            if (spectators.isNotEmpty) ...[
-              _buildRoleHeader('Spectators', Colors.grey, spectators.length),
-              ...spectators.map((p) => _ParticipantTile(
-                    participant: p,
-                    isCurrentUser: p.id == currentParticipant?.id,
-                  )),
-            ],
+            final teamAlpha = teams.firstWhere((t) => t.displayOrder == 0,
+                orElse: () => teams.first);
+            final teamBeta = teams.firstWhere((t) => t.displayOrder == 1,
+                orElse: () => teams.last);
 
-            // Change Role Button
-            if (currentParticipant != null) ...[
-              const SizedBox(height: 24),
-              OutlinedButton(
-                onPressed: () => _showChangeRoleDialog(currentParticipant),
-                child: const Text('Change Role'),
+            final alphaMembers =
+                participants.where((p) => p.teamId == teamAlpha.id).toList();
+            final betaMembers =
+                participants.where((p) => p.teamId == teamBeta.id).toList();
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _TeamColumn(
+                            team: teamAlpha,
+                            members: alphaMembers,
+                            currentParticipantId: currentParticipant?.id,
+                            onTapMember: (p) =>
+                                _onTapParticipant(p, teamBeta.id),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _TeamColumn(
+                            team: teamBeta,
+                            members: betaMembers,
+                            currentParticipantId: currentParticipant?.id,
+                            onTapMember: (p) =>
+                                _onTapParticipant(p, teamAlpha.id),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Tap a name to switch teams',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 8),
+                ],
               ),
-            ],
-          ],
+            );
+          },
         );
       },
     );
   }
 
-  Widget _buildRoleHeader(String title, Color color, int count) {
+  Widget _buildUnassignedPlayers(
+    AsyncValue<List<Participant>> participantsAsync,
+    AsyncValue<List<Team>> teamsAsync,
+    Participant? currentParticipant,
+  ) {
+    final participants = participantsAsync.valueOrNull ?? [];
+    final teams = teamsAsync.valueOrNull ?? [];
+    final teamIds = teams.map((t) => t.id).toSet();
+    final unassigned =
+        participants.where((p) => p.teamId == null || !teamIds.contains(p.teamId)).toList();
+
+    if (unassigned.isEmpty) return const SizedBox.shrink();
+
+    // Auto-assign first available team to unassigned players
+    final firstTeamId = teams.isNotEmpty ? teams.first.id : null;
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: JetlagCard(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Unassigned (${unassigned.length})',
+              style: Theme.of(context).textTheme.labelSmall,
             ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '$title ($count)',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: color,
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: unassigned.map((p) {
+                final isMe = p.id == currentParticipant?.id;
+                return GestureDetector(
+                  onTap: firstTeamId != null
+                      ? () => _switchTeam(p.id, firstTeamId)
+                      : null,
+                  child: Chip(
+                    label: Text(
+                      p.displayName + (isMe ? ' (you)' : ''),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isMe ? context.accent : context.textPrimary,
+                      ),
+                    ),
+                    backgroundColor: context.surface2,
+                    side: BorderSide(color: context.borderSubtle),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStartButton(bool balanced) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (!balanced)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'Teams must be balanced to start',
+                style: TextStyle(
+                  color: context.red,
+                  fontSize: 12,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          SizedBox(
+            width: double.infinity,
+            child: JetlagButton(
+              label: 'Start Round 1',
+              onPressed: balanced ? _startGame : null,
             ),
           ),
         ],
@@ -248,63 +308,54 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
     );
   }
 
-  Widget _buildStartButton(AsyncValue<List<Participant>> participantsAsync) {
-    return participantsAsync.when(
-      loading: () => const SizedBox(),
-      error: (_, __) => const SizedBox(),
-      data: (participants) {
-        final hasHider = participants.any((p) => p.role == ParticipantRole.hider);
-        final hasSeekers = participants.any((p) => p.role == ParticipantRole.seeker);
-        final canStart = hasHider && hasSeekers;
+  void _onTapParticipant(Participant participant, String otherTeamId) {
+    // Tapping switches the participant to the other team
+    _switchTeam(participant.id, otherTeamId);
+  }
 
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (!canStart)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    !hasHider
-                        ? 'Need a hider to start'
-                        : 'Need at least one seeker',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ElevatedButton(
-                onPressed: canStart ? _startGame : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: JetLagTheme.hiderGreen,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: const Text(
-                  'Start Hiding Period',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
+  Future<void> _switchTeam(String participantId, String teamId) async {
+    try {
+      await ref.read(teamActionsProvider)?.switchTeam(participantId, teamId);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error switching team: $e')),
         );
-      },
-    );
+      }
+    }
   }
 
   Future<void> _joinGame() async {
     final displayName = ref.read(displayNameProvider) ?? 'Player';
     final session = ref.read(currentSessionProvider).valueOrNull;
-    final isHost = session?.createdBy == await ref.read(deviceTokenProvider.future);
+    final isHost =
+        session?.createdBy == await ref.read(deviceTokenProvider.future);
 
     try {
-      await ref.read(gameActionsProvider).joinAsParticipant(
+      final participant = await ref.read(gameActionsProvider)!.joinAsParticipant(
             displayName: displayName,
-            role: _selectedRole,
+            role: ParticipantRole.seeker, // default role, team matters more now
             isHost: isHost,
           );
+
+      // Auto-assign to the team with fewer members
+      final teams = ref.read(teamsProvider).valueOrNull ?? [];
+      final participants = ref.read(participantsProvider).valueOrNull ?? [];
+      if (teams.length >= 2) {
+        final counts = <String, int>{};
+        for (final t in teams) {
+          counts[t.id] =
+              participants.where((p) => p.teamId == t.id).length;
+        }
+        // Pick team with fewest members
+        final sorted = teams.toList()
+          ..sort(
+              (a, b) => (counts[a.id] ?? 0).compareTo(counts[b.id] ?? 0));
+        await ref
+            .read(teamActionsProvider)
+            ?.switchTeam(participant.id, sorted.first.id);
+      }
+
       setState(() {
         _hasJoined = true;
       });
@@ -317,40 +368,9 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
     }
   }
 
-  void _showChangeRoleDialog(Participant current) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Change Role'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: ParticipantRole.values.map((role) {
-            return ListTile(
-              title: Text(_getRoleName(role)),
-              leading: Radio<ParticipantRole>(
-                value: role,
-                groupValue: current.role,
-                onChanged: (value) async {
-                  if (value != null) {
-                    await ref.read(gameActionsProvider).updateRole(value);
-                    if (mounted) Navigator.pop(context);
-                  }
-                },
-              ),
-              onTap: () async {
-                await ref.read(gameActionsProvider).updateRole(role);
-                if (mounted) Navigator.pop(context);
-              },
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
   Future<void> _startGame() async {
     try {
-      await ref.read(gameActionsProvider).startHidingPeriod();
+      await ref.read(gameActionsProvider)!.startHidingPeriod();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -376,7 +396,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
   }
 
   Future<void> _leaveLobby() async {
-    await ref.read(gameActionsProvider).leaveSession();
+    await ref.read(gameActionsProvider)?.leaveSession();
     if (mounted) {
       context.go('/');
     }
@@ -388,139 +408,222 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
       const SnackBar(content: Text('Room code copied!')),
     );
   }
-
-  String _getRoleName(ParticipantRole role) {
-    switch (role) {
-      case ParticipantRole.hider:
-        return 'Hider';
-      case ParticipantRole.seeker:
-        return 'Seeker';
-      case ParticipantRole.spectator:
-        return 'Spectator';
-    }
-  }
 }
 
-class _RoleCard extends StatelessWidget {
-  final ParticipantRole role;
-  final bool isSelected;
-  final VoidCallback onTap;
+// ============ Room Code Header ============
 
-  const _RoleCard({
-    required this.role,
-    required this.isSelected,
-    required this.onTap,
-  });
+class _RoomCodeHeader extends StatelessWidget {
+  final String roomCode;
+  final VoidCallback onCopy;
+
+  const _RoomCodeHeader({required this.roomCode, required this.onCopy});
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (role) {
-      ParticipantRole.hider => JetLagTheme.hiderGreen,
-      ParticipantRole.seeker => JetLagTheme.seekerRed,
-      ParticipantRole.spectator => Colors.grey,
-    };
-
-    final icon = switch (role) {
-      ParticipantRole.hider => Icons.visibility_off,
-      ParticipantRole.seeker => Icons.search,
-      ParticipantRole.spectator => Icons.remove_red_eye,
-    };
-
-    final description = switch (role) {
-      ParticipantRole.hider => 'Hide from the seekers and survive the clock',
-      ParticipantRole.seeker => 'Find the hider before time runs out',
-      ParticipantRole.spectator => 'Watch the game unfold',
-    };
-
-    return Card(
-      elevation: isSelected ? 4 : 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isSelected ? color : Colors.transparent,
-          width: 2,
-        ),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Icon(icon, size: 40, color: color),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      role.name[0].toUpperCase() + role.name.substring(1),
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: color,
-                      ),
-                    ),
-                    Text(
-                      description,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: JetlagCard(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Column(
+              children: [
+                Text('ROOM CODE',
+                    style: Theme.of(context).textTheme.labelSmall),
+                const SizedBox(height: 4),
+                Text(
+                  roomCode,
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 6,
+                    color: context.accent,
+                  ),
                 ),
-              ),
-              if (isSelected)
-                Icon(Icons.check_circle, color: color),
-            ],
-          ),
+              ],
+            ),
+            const SizedBox(width: 12),
+            IconButton(
+              icon: Icon(Icons.copy_rounded, color: context.textSecondary),
+              onPressed: onCopy,
+              tooltip: 'Copy room code',
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _ParticipantTile extends StatelessWidget {
-  final Participant participant;
-  final bool isCurrentUser;
+// ============ Team Column ============
 
-  const _ParticipantTile({
-    required this.participant,
+class _TeamColumn extends StatelessWidget {
+  final Team team;
+  final List<Participant> members;
+  final String? currentParticipantId;
+  final void Function(Participant) onTapMember;
+
+  const _TeamColumn({
+    required this.team,
+    required this.members,
+    required this.currentParticipantId,
+    required this.onTapMember,
+  });
+
+  Color _teamColor(BuildContext context) {
+    switch (team.color) {
+      case 'green':
+        return context.green;
+      case 'red':
+        return context.red;
+      default:
+        return context.accent;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _teamColor(context);
+
+    return JetlagCard(
+      borderColor: color.withValues(alpha: 0.3),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Team header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.4),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  team.name,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${members.length} player${members.length == 1 ? '' : 's'}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const Divider(height: 16),
+
+          // Member list
+          if (members.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                'No players yet',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            )
+          else
+            ...members.map((p) {
+              final isMe = p.id == currentParticipantId;
+              return _MemberTile(
+                name: p.displayName,
+                isCurrentUser: isMe,
+                isHost: p.isHost,
+                accentColor: color,
+                onTap: () => onTapMember(p),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+}
+
+// ============ Member Tile ============
+
+class _MemberTile extends StatelessWidget {
+  final String name;
+  final bool isCurrentUser;
+  final bool isHost;
+  final Color accentColor;
+  final VoidCallback onTap;
+
+  const _MemberTile({
+    required this.name,
     required this.isCurrentUser,
+    required this.isHost,
+    required this.accentColor,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: participant.isConnected ? Colors.green : Colors.grey,
-          child: Text(
-            participant.displayName[0].toUpperCase(),
-            style: const TextStyle(color: Colors.white),
-          ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: isCurrentUser
+              ? context.accent.withValues(alpha: 0.12)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(JetlagRadii.sm),
+          border: isCurrentUser
+              ? Border.all(color: context.accent.withValues(alpha: 0.3))
+              : null,
         ),
-        title: Row(
+        child: Row(
           children: [
-            Text(participant.displayName),
-            if (isCurrentUser)
-              const Padding(
-                padding: EdgeInsets.only(left: 8),
-                child: Text(
-                  '(you)',
-                  style: TextStyle(
-                    fontStyle: FontStyle.italic,
-                    color: Colors.grey,
-                  ),
+            CircleAvatar(
+              radius: 12,
+              backgroundColor: accentColor.withValues(alpha: 0.2),
+              child: Text(
+                name.isNotEmpty ? name[0].toUpperCase() : '?',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: accentColor,
                 ),
               ),
-            if (participant.isHost)
-              const Padding(
-                padding: EdgeInsets.only(left: 8),
-                child: Icon(Icons.star, size: 16, color: Colors.amber),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                name + (isCurrentUser ? ' (you)' : ''),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isCurrentUser ? FontWeight.w600 : FontWeight.w400,
+                  color: isCurrentUser
+                      ? context.accent
+                      : context.textPrimary,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
+            ),
+            if (isHost)
+              Icon(Icons.star_rounded,
+                  size: 14, color: context.orange),
           ],
         ),
-        subtitle: Text(participant.isConnected ? 'Connected' : 'Disconnected'),
       ),
     );
   }
