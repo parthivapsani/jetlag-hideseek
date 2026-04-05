@@ -10,6 +10,8 @@ import '../../core/models/station.dart';
 import '../../core/providers/providers.dart';
 import '../../core/providers/game_state_provider.dart';
 import '../../core/services/station_service.dart';
+import '../../core/services/places_service.dart';
+import '../../core/services/photo_service.dart';
 
 /// Screen for drafting questions with map visualization
 class QuestionDraftingScreen extends ConsumerStatefulWidget {
@@ -34,6 +36,10 @@ class _QuestionDraftingScreenState extends ConsumerState<QuestionDraftingScreen>
   LatLng? _thermometerEnd;
   double _tentaclesRadius = 2000; // meters
   String? _selectedLine;
+  String _selectedPoiType = PlaceTypes.transitStation;
+  List<Station> _placesResults = [];
+  bool _isLoadingPlaces = false;
+  String _selectedPhotoType = 'station_sign';
 
   // Map state
   Set<Circle> _circles = {};
@@ -476,6 +482,9 @@ class _QuestionDraftingScreenState extends ConsumerState<QuestionDraftingScreen>
   }
 
   Widget _buildTentaclesControls() {
+    final placesService = ref.watch(placesServiceProvider);
+    final isPlacesConfigured = placesService.isConfigured;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -496,6 +505,9 @@ class _QuestionDraftingScreenState extends ConsumerState<QuestionDraftingScreen>
               _tentaclesRadius = value;
               _updateMapOverlays();
             });
+            if (isPlacesConfigured) {
+              _loadPlacesForTentacles();
+            }
           },
         ),
         const Text('Select what to look for:'),
@@ -504,26 +516,85 @@ class _QuestionDraftingScreenState extends ConsumerState<QuestionDraftingScreen>
           children: [
             FilterChip(
               label: const Text('Stations'),
-              selected: true,
-              onSelected: (v) {},
+              selected: _selectedPoiType == PlaceTypes.transitStation,
+              onSelected: (v) => _selectPoiType(PlaceTypes.transitStation),
             ),
             FilterChip(
               label: const Text('Libraries'),
-              selected: false,
-              onSelected: (v) {},
+              selected: _selectedPoiType == PlaceTypes.library,
+              onSelected: (v) => _selectPoiType(PlaceTypes.library),
             ),
             FilterChip(
               label: const Text('Parks'),
-              selected: false,
-              onSelected: (v) {},
+              selected: _selectedPoiType == PlaceTypes.park,
+              onSelected: (v) => _selectPoiType(PlaceTypes.park),
+            ),
+            FilterChip(
+              label: const Text('Museums'),
+              selected: _selectedPoiType == PlaceTypes.museum,
+              onSelected: (v) => _selectPoiType(PlaceTypes.museum),
             ),
           ],
         ),
+        if (_isLoadingPlaces)
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: LinearProgressIndicator(),
+          ),
+        if (!isPlacesConfigured)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Google Places API not configured - using cached stations only',
+              style: TextStyle(fontSize: 11, color: Colors.grey[600], fontStyle: FontStyle.italic),
+            ),
+          ),
       ],
     );
   }
 
+  void _selectPoiType(String type) {
+    setState(() {
+      _selectedPoiType = type;
+    });
+    _loadPlacesForTentacles();
+  }
+
+  Future<void> _loadPlacesForTentacles() async {
+    final placesService = ref.read(placesServiceProvider);
+    if (!placesService.isConfigured) return;
+
+    final gameState = ref.read(seekerGameStateProvider);
+    final pos = gameState.seekerPosition;
+    if (pos == null) return;
+
+    setState(() => _isLoadingPlaces = true);
+
+    try {
+      final results = await placesService.searchPlaceType(
+        lat: pos.$1,
+        lng: pos.$2,
+        placeType: _selectedPoiType,
+        radiusMeters: _tentaclesRadius,
+      );
+      if (mounted) {
+        setState(() {
+          _placesResults = results;
+          _isLoadingPlaces = false;
+        });
+        _updateMapOverlays();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingPlaces = false);
+      }
+    }
+  }
+
   Widget _buildMatchingControls() {
+    final placesService = ref.watch(placesServiceProvider);
+    final isPlacesConfigured = placesService.isConfigured;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -540,21 +611,47 @@ class _QuestionDraftingScreenState extends ConsumerState<QuestionDraftingScreen>
           children: [
             ChoiceChip(
               label: const Text('Station'),
-              selected: true,
-              onSelected: (v) {},
+              selected: _selectedPoiType == PlaceTypes.transitStation,
+              onSelected: (v) => _selectPoiType(PlaceTypes.transitStation),
             ),
             ChoiceChip(
               label: const Text('Park'),
-              selected: false,
-              onSelected: (v) {},
+              selected: _selectedPoiType == PlaceTypes.park,
+              onSelected: (v) => _selectPoiType(PlaceTypes.park),
             ),
             ChoiceChip(
               label: const Text('Library'),
-              selected: false,
-              onSelected: (v) {},
+              selected: _selectedPoiType == PlaceTypes.library,
+              onSelected: (v) => _selectPoiType(PlaceTypes.library),
+            ),
+            ChoiceChip(
+              label: const Text('Museum'),
+              selected: _selectedPoiType == PlaceTypes.museum,
+              onSelected: (v) => _selectPoiType(PlaceTypes.museum),
             ),
           ],
         ),
+        if (_isLoadingPlaces)
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: LinearProgressIndicator(),
+          ),
+        if (_placesResults.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Closest: ${_placesResults.first.name}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        if (!isPlacesConfigured)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Google Places API not configured',
+              style: TextStyle(fontSize: 11, color: Colors.grey[600], fontStyle: FontStyle.italic),
+            ),
+          ),
       ],
     );
   }
@@ -585,6 +682,14 @@ class _QuestionDraftingScreenState extends ConsumerState<QuestionDraftingScreen>
   }
 
   Widget _buildPhotoControls() {
+    final photoTypes = {
+      'station_sign': 'Station sign',
+      'street_sign': 'Street sign',
+      'current_view': 'Current view',
+      'largest_building': 'Largest building',
+      'nearest_landmark': 'Nearest landmark',
+    };
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -593,18 +698,46 @@ class _QuestionDraftingScreenState extends ConsumerState<QuestionDraftingScreen>
           style: Theme.of(context).textTheme.titleSmall,
         ),
         const SizedBox(height: 8),
+        Text(
+          'Draw ${QuestionCategory.photo.cardsDraw}, Keep ${QuestionCategory.photo.cardsKeep}',
+          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+        ),
+        const SizedBox(height: 12),
         const Text('Select what to request:'),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: [
-            ChoiceChip(label: const Text('Station sign'), selected: true, onSelected: (v) {}),
-            ChoiceChip(label: const Text('Street sign'), selected: false, onSelected: (v) {}),
-            ChoiceChip(label: const Text('Current view'), selected: false, onSelected: (v) {}),
-            ChoiceChip(label: const Text('Largest building'), selected: false, onSelected: (v) {}),
-            ChoiceChip(label: const Text('Custom...'), selected: false, onSelected: (v) {}),
-          ],
+          children: photoTypes.entries.map((entry) {
+            return ChoiceChip(
+              label: Text(entry.value),
+              selected: _selectedPhotoType == entry.key,
+              onSelected: (v) {
+                setState(() => _selectedPhotoType = entry.key);
+              },
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.pink.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.pink.withOpacity(0.3)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline, color: Colors.pink, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'The hider will take a photo of their ${photoTypes[_selectedPhotoType]?.toLowerCase() ?? 'view'} and send it to you.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -836,11 +969,55 @@ class _QuestionDraftingScreenState extends ConsumerState<QuestionDraftingScreen>
             strokeWidth: 1,
           ));
         }
+        // Add markers for places results
+        for (int i = 0; i < _placesResults.length; i++) {
+          final place = _placesResults[i];
+          newMarkers.add(Marker(
+            markerId: MarkerId('place_$i'),
+            position: LatLng(place.latitude, place.longitude),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              i == 0 ? BitmapDescriptor.hueGreen : BitmapDescriptor.hueRed,
+            ),
+            infoWindow: InfoWindow(
+              title: place.name,
+              snippet: i == 0 ? 'Closest to you' : null,
+            ),
+          ));
+        }
         break;
 
       case QuestionCategory.matching:
+        // Show seeker's position and closest POI
+        newMarkers.add(Marker(
+          markerId: const MarkerId('seeker_pos'),
+          position: center,
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+          infoWindow: const InfoWindow(title: 'Your position'),
+        ));
+        if (_placesResults.isNotEmpty) {
+          final closest = _placesResults.first;
+          newMarkers.add(Marker(
+            markerId: const MarkerId('closest_poi'),
+            position: LatLng(closest.latitude, closest.longitude),
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+            infoWindow: InfoWindow(
+              title: closest.name,
+              snippet: 'Your closest ${_selectedPoiType.replaceAll('_', ' ')}',
+            ),
+          ));
+          // Draw line to closest
+          newPolylines.add(Polyline(
+            polylineId: const PolylineId('to_closest'),
+            points: [center, LatLng(closest.latitude, closest.longitude)],
+            color: Colors.blue,
+            width: 2,
+            patterns: [PatternItem.dash(8), PatternItem.gap(8)],
+          ));
+        }
+        break;
+
       case QuestionCategory.measuring:
-        // Show seeker's closest station
+        // Show seeker's position
         newMarkers.add(Marker(
           markerId: const MarkerId('seeker_pos'),
           position: center,
@@ -918,15 +1095,137 @@ class _QuestionDraftingScreenState extends ConsumerState<QuestionDraftingScreen>
   }
 
   void _askQuestion() {
-    // TODO: Implement question submission
+    // Build question parameters based on category
+    final questionParams = _buildQuestionParams();
+
+    // Show confirmation dialog
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Ask ${_selectedCategory.displayName} Question?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(questionParams['description'] as String? ?? 'Send this question to the hider?'),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: JetLagTheme.getCategoryColor(_selectedCategory.displayName).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.style, color: JetLagTheme.getCategoryColor(_selectedCategory.displayName)),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Hider will draw ${_selectedCategory.cardsDraw}, keep ${_selectedCategory.cardsKeep}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _submitQuestion(questionParams);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: JetLagTheme.getCategoryColor(_selectedCategory.displayName),
+            ),
+            child: const Text('Ask Question'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Map<String, dynamic> _buildQuestionParams() {
+    final gameState = ref.read(seekerGameStateProvider);
+    final pos = gameState.seekerPosition;
+
+    switch (_selectedCategory) {
+      case QuestionCategory.radar:
+        return {
+          'category': 'radar',
+          'radius_meters': _radarRadius,
+          'seeker_lat': pos?.$1,
+          'seeker_lng': pos?.$2,
+          'description': 'Are you within ${_formatDistance(_radarRadius)} of our location?',
+        };
+      case QuestionCategory.thermometer:
+        final distance = _thermometerStart != null && _thermometerEnd != null
+            ? _calculateDistance(_thermometerStart!, _thermometerEnd!)
+            : 0.0;
+        return {
+          'category': 'thermometer',
+          'start_lat': _thermometerStart?.latitude,
+          'start_lng': _thermometerStart?.longitude,
+          'end_lat': _thermometerEnd?.latitude,
+          'end_lng': _thermometerEnd?.longitude,
+          'distance_moved': distance,
+          'description': 'We moved ${_formatDistance(distance)}. Are we warmer or colder?',
+        };
+      case QuestionCategory.tentacles:
+        return {
+          'category': 'tentacles',
+          'radius_meters': _tentaclesRadius,
+          'poi_type': _selectedPoiType,
+          'seeker_lat': pos?.$1,
+          'seeker_lng': pos?.$2,
+          'description': 'Of all ${_selectedPoiType.replaceAll('_', ' ')}s within ${_formatDistance(_tentaclesRadius)}, which is closest to you?',
+        };
+      case QuestionCategory.matching:
+        final closest = _placesResults.isNotEmpty ? _placesResults.first.name : 'unknown';
+        return {
+          'category': 'matching',
+          'poi_type': _selectedPoiType,
+          'seeker_closest': closest,
+          'description': 'Is your closest ${_selectedPoiType.replaceAll('_', ' ')} the same as ours ($closest)?',
+        };
+      case QuestionCategory.measuring:
+        return {
+          'category': 'measuring',
+          'poi_type': _selectedPoiType,
+          'seeker_lat': pos?.$1,
+          'seeker_lng': pos?.$2,
+          'description': 'Are you closer to X than we are?',
+        };
+      case QuestionCategory.photo:
+        return {
+          'category': 'photo',
+          'photo_type': _selectedPhotoType,
+          'description': 'Send us a picture of your ${_selectedPhotoType.replaceAll('_', ' ')}',
+        };
+    }
+  }
+
+  void _submitQuestion(Map<String, dynamic> params) {
+    // For now, just show a success message
+    // TODO: Actually submit via questionActionsProvider when backend is wired up
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Asking ${_selectedCategory.displayName} question...'),
+        content: Text('Question sent to hider!'),
+        backgroundColor: JetLagTheme.getCategoryColor(_selectedCategory.displayName),
         action: SnackBarAction(
           label: 'View',
-          onPressed: () {},
+          textColor: Colors.white,
+          onPressed: () {
+            // TODO: Navigate to question history
+          },
         ),
       ),
     );
+
+    // Pop back to the game screen
+    Navigator.pop(context);
   }
 }

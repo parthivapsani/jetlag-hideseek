@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/models/models.dart';
 import '../../core/providers/providers.dart';
 import '../../core/services/supabase_service.dart';
+import '../cards/card_draw_screen.dart';
 
 class AnswerInterface extends ConsumerStatefulWidget {
   final SessionQuestion sessionQuestion;
@@ -353,7 +354,15 @@ class _AnswerInterfaceState extends ConsumerState<AnswerInterface> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Answer submitted!')),
+          const SnackBar(content: Text('Answer submitted! Draw your cards.')),
+        );
+
+        // Show card draw screen for the hider to draw and keep cards
+        await showCardDrawScreen(
+          context,
+          category: question.category,
+          drawCount: question.category.cardsDraw,
+          keepCount: question.category.cardsKeep,
         );
       }
     } catch (e) {

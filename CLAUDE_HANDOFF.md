@@ -111,16 +111,36 @@ In **endgame**: seekers are in the hiding zone, hider cannot move, questions are
   - Station list (included/uncertain)
   - Squish boundary slider
   - Endgame toggle
+  - POI type selection (stations, libraries, parks, museums)
+  - Question submission flow with confirmation
 - Travel radius estimator (isochrone-like boundary)
 - Basic station service (city-agnostic)
+- Supabase initialization with offline mode support (`supabase_init.dart`)
+- Card deck UI (`card_deck_view.dart`) with:
+  - Time bonus tracking
+  - Active curses display
+  - Card grouping by type
+  - Effective hiding time calculator
+- Card draw/keep screen (`card_draw_screen.dart`) with:
+  - Animated card reveal
+  - Selection UI for keeping cards
+  - Integration into answer flow
+- Google Places service (`places_service.dart`) with:
+  - Search by place type
+  - Search by keyword
+  - Result caching
+  - Integration into question drafting
+- Photo service (`photo_service.dart`) with:
+  - Camera capture
+  - Gallery picker
+  - Save to documents
+  - Photo management
 
 ### Not Yet Implemented
-- Supabase backend connection (schema exists in `/supabase/migrations/`)
 - Real-time sync between players
-- Card deck system UI
-- Actual question submission flow
-- Google Places integration for station loading (lower priority)
-- Photo/audio capture for questions
+- Actual question submission to backend
+- Polygon editor polish (Task #17)
+- Audio recording for oddball questions
 
 ## Running the App
 
@@ -165,12 +185,12 @@ flutter run -d chrome
 
 ## Next Steps (Suggested Priority)
 
-1. Wire up Supabase backend
-2. Implement real-time game sync
-3. Add Google Places for dynamic station loading
-4. Build card deck UI
-5. Add photo capture for photo questions
-6. Test multiplayer flow
+1. Wire up question submission to Supabase backend
+2. Implement real-time game sync between players
+3. Polish polygon editor for game area definition
+4. Add audio recording for oddball questions
+5. Test multiplayer flow end-to-end
+6. Add spectator mode for web
 
 ## Notes
 

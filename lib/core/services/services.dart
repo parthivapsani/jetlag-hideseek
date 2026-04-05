@@ -1,6 +1,9 @@
 export 'supabase_service.dart';
+export 'supabase_init.dart';
 export 'realtime_service.dart';
 export 'location_service.dart';
 export 'nominatim_service.dart';
 export 'travel_estimator.dart';
 export 'station_service.dart';
+export 'places_service.dart';
+export 'photo_service.dart';

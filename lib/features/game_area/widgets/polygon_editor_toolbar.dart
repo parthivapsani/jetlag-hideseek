@@ -48,6 +48,14 @@ class PolygonEditorToolbar extends StatelessWidget {
                 mode == EditorMode.deleteVertex ? EditorMode.view : EditorMode.deleteVertex,
               ),
             ),
+            _ToolButton(
+              icon: Icons.add_circle_outline,
+              tooltip: 'Insert vertex on edge',
+              isSelected: mode == EditorMode.insertVertex,
+              onTap: () => onModeChanged(
+                mode == EditorMode.insertVertex ? EditorMode.view : EditorMode.insertVertex,
+              ),
+            ),
             const Divider(height: 8),
             _ToolButton(
               icon: Icons.block,

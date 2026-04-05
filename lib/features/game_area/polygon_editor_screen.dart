@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,7 +14,7 @@ import '../../app/theme.dart';
 import 'widgets/polygon_editor_toolbar.dart';
 import 'widgets/game_settings_sheet.dart';
 
-enum EditorMode { view, addVertex, moveVertex, deleteVertex, exclusion }
+enum EditorMode { view, addVertex, moveVertex, deleteVertex, insertVertex, exclusion }
 
 class PolygonEditorScreen extends ConsumerStatefulWidget {
   const PolygonEditorScreen({super.key});
@@ -155,7 +156,7 @@ class _PolygonEditorScreenState extends ConsumerState<PolygonEditorScreen> {
             ),
           ),
 
-          // Instructions
+          // Instructions and area info
           Positioned(
             bottom: 16,
             left: 16,
@@ -163,10 +164,45 @@ class _PolygonEditorScreenState extends ConsumerState<PolygonEditorScreen> {
             child: Card(
               child: Padding(
                 padding: const EdgeInsets.all(12),
-                child: Text(
-                  _getInstructions(),
-                  style: Theme.of(context).textTheme.bodySmall,
-                  textAlign: TextAlign.center,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _getInstructions(),
+                      style: Theme.of(context).textTheme.bodySmall,
+                      textAlign: TextAlign.center,
+                    ),
+                    if (_inclusionPolygons.isNotEmpty && _inclusionPolygons.any((p) => p.points.length >= 3)) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.straighten, size: 14, color: Colors.grey[600]),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Area: ${_calculateTotalArea()}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (_exclusionPolygons.isNotEmpty) ...[
+                            const SizedBox(width: 12),
+                            Icon(Icons.block, size: 14, color: Colors.red[400]),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${_exclusionPolygons.length} exclusion${_exclusionPolygons.length > 1 ? 's' : ''}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.red[400],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
@@ -197,6 +233,8 @@ class _PolygonEditorScreenState extends ConsumerState<PolygonEditorScreen> {
         return 'Drag vertices to adjust the polygon';
       case EditorMode.deleteVertex:
         return 'Tap a vertex to delete it';
+      case EditorMode.insertVertex:
+        return 'Tap on an edge to insert a new vertex';
       case EditorMode.exclusion:
         return 'Draw areas to exclude from the game area';
     }
@@ -204,6 +242,57 @@ class _PolygonEditorScreenState extends ConsumerState<PolygonEditorScreen> {
 
   bool get _canSave => _inclusionPolygons.isNotEmpty &&
       _inclusionPolygons.any((p) => p.points.length >= 3);
+
+  String _calculateTotalArea() {
+    double totalArea = 0;
+
+    for (final polygon in _inclusionPolygons) {
+      if (polygon.points.length >= 3) {
+        totalArea += _calculatePolygonArea(polygon.points);
+      }
+    }
+
+    for (final polygon in _exclusionPolygons) {
+      if (polygon.points.length >= 3) {
+        totalArea -= _calculatePolygonArea(polygon.points);
+      }
+    }
+
+    totalArea = totalArea.abs();
+
+    if (totalArea < 1) {
+      return '${(totalArea * 1000000).toStringAsFixed(0)} m²';
+    } else if (totalArea < 10) {
+      return '${totalArea.toStringAsFixed(2)} km²';
+    } else {
+      return '${totalArea.toStringAsFixed(1)} km²';
+    }
+  }
+
+  double _calculatePolygonArea(List<LatLngData> points) {
+    // Shoelace formula for polygon area, converted to km²
+    // Earth radius in km
+    const R = 6371.0;
+
+    double area = 0;
+    final n = points.length;
+
+    for (int i = 0; i < n; i++) {
+      final p1 = points[i];
+      final p2 = points[(i + 1) % n];
+
+      // Convert to radians
+      final lat1 = p1.latitude * 3.141592653589793 / 180;
+      final lng1 = p1.longitude * 3.141592653589793 / 180;
+      final lat2 = p2.latitude * 3.141592653589793 / 180;
+      final lng2 = p2.longitude * 3.141592653589793 / 180;
+
+      area += (lng2 - lng1) * (2 + math.sin(lat1) + math.sin(lat2));
+    }
+
+    area = (area * R * R / 2).abs();
+    return area;
+  }
 
   Set<Polygon> _buildPolygons() {
     final polygons = <Polygon>{};
@@ -243,7 +332,7 @@ class _PolygonEditorScreenState extends ConsumerState<PolygonEditorScreen> {
     final markers = <Marker>{};
 
     // Add vertex markers when in edit mode
-    if (_mode == EditorMode.moveVertex || _mode == EditorMode.deleteVertex) {
+    if (_mode == EditorMode.moveVertex || _mode == EditorMode.deleteVertex || _mode == EditorMode.insertVertex) {
       final allPolygons = [..._inclusionPolygons, ..._exclusionPolygons];
       for (final polygon in allPolygons) {
         for (int i = 0; i < polygon.points.length; i++) {
@@ -260,10 +349,64 @@ class _PolygonEditorScreenState extends ConsumerState<PolygonEditorScreen> {
             onTap: () => _onVertexTap(polygon.id, i),
           ));
         }
+
+        // Add edge midpoint markers for insert mode
+        if (_mode == EditorMode.insertVertex && polygon.points.length >= 2) {
+          for (int i = 0; i < polygon.points.length; i++) {
+            final p1 = polygon.points[i];
+            final p2 = polygon.points[(i + 1) % polygon.points.length];
+            final midpoint = LatLng(
+              (p1.latitude + p2.latitude) / 2,
+              (p1.longitude + p2.longitude) / 2,
+            );
+            markers.add(Marker(
+              markerId: MarkerId('${polygon.id}_edge_$i'),
+              position: midpoint,
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+              anchor: const Offset(0.5, 0.5),
+              onTap: () => _insertVertexOnEdge(polygon.id, i),
+            ));
+          }
+        }
       }
     }
 
     return markers;
+  }
+
+  void _insertVertexOnEdge(String polygonId, int edgeIndex) {
+    setState(() {
+      final isExclusion = _exclusionPolygons.any((p) => p.id == polygonId);
+      final polygons = isExclusion ? _exclusionPolygons : _inclusionPolygons;
+      final polygon = polygons.firstWhere((p) => p.id == polygonId);
+
+      final p1 = polygon.points[edgeIndex];
+      final p2 = polygon.points[(edgeIndex + 1) % polygon.points.length];
+      final midpoint = LatLngData(
+        latitude: (p1.latitude + p2.latitude) / 2,
+        longitude: (p1.longitude + p2.longitude) / 2,
+      );
+
+      final newPoints = List<LatLngData>.from(polygon.points);
+      newPoints.insert(edgeIndex + 1, midpoint);
+
+      final updatedPolygon = polygon.copyWith(points: newPoints);
+
+      if (isExclusion) {
+        _exclusionPolygons = _exclusionPolygons
+            .map((p) => p.id == polygonId ? updatedPolygon : p)
+            .toList();
+      } else {
+        _inclusionPolygons = _inclusionPolygons
+            .map((p) => p.id == polygonId ? updatedPolygon : p)
+            .toList();
+      }
+
+      // Select the newly inserted vertex for easy adjustment
+      _selectedPolygonId = polygonId;
+      _selectedVertexIndex = edgeIndex + 1;
+      _mode = EditorMode.moveVertex;
+    });
   }
 
   void _onMapTap(LatLng position) {
