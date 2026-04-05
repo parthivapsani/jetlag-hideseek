@@ -1,20 +1,16 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/models.dart';
 import '../services/services.dart';
+// supabaseClientProvider and supabaseServiceProvider come from services.dart → supabase_init.dart
 import 'auth_provider.dart';
 
 // Service providers
-final supabaseServiceProvider = Provider<SupabaseService>((ref) {
+final realtimeServiceProvider = Provider<RealtimeService?>((ref) {
   final client = ref.watch(supabaseClientProvider);
-  return SupabaseService(client);
-});
-
-final realtimeServiceProvider = Provider<RealtimeService>((ref) {
-  final client = ref.watch(supabaseClientProvider);
+  if (client == null) return null;
   return RealtimeService(client);
 });
 
@@ -34,12 +30,14 @@ final nominatimServiceProvider = Provider<NominatimService>((ref) {
 
 final gameAreasProvider = FutureProvider<List<GameArea>>((ref) async {
   final service = ref.watch(supabaseServiceProvider);
+  if (service == null) return [];
   return service.getGameAreas();
 });
 
 final gameAreaProvider =
     FutureProvider.family<GameArea?, String>((ref, id) async {
   final service = ref.watch(supabaseServiceProvider);
+  if (service == null) return null;
   return service.getGameArea(id);
 });
 
@@ -53,6 +51,7 @@ final currentSessionProvider = StreamProvider<GameSession?>((ref) {
 
   final service = ref.watch(supabaseServiceProvider);
   final realtime = ref.watch(realtimeServiceProvider);
+  if (service == null || realtime == null) return Stream.value(null);
 
   // Initial fetch + realtime updates
   return _sessionStream(service, realtime, sessionId);
@@ -87,6 +86,7 @@ final participantsProvider = StreamProvider<List<Participant>>((ref) {
 
   final service = ref.watch(supabaseServiceProvider);
   final realtime = ref.watch(realtimeServiceProvider);
+  if (service == null || realtime == null) return Stream.value([]);
 
   return _participantsStream(service, realtime, sessionId);
 });
@@ -114,9 +114,10 @@ final seekersProvider = Provider<List<Participant>>((ref) {
 
 // ============ Game Actions ============
 
-final gameActionsProvider = Provider<GameActions>((ref) {
+final gameActionsProvider = Provider<GameActions?>((ref) {
   final service = ref.watch(supabaseServiceProvider);
   final realtime = ref.watch(realtimeServiceProvider);
+  if (service == null || realtime == null) return null;
   return GameActions(ref, service, realtime);
 });
 
@@ -266,8 +267,9 @@ class GameActions {
 
 // ============ Game Area Actions ============
 
-final gameAreaActionsProvider = Provider<GameAreaActions>((ref) {
+final gameAreaActionsProvider = Provider<GameAreaActions?>((ref) {
   final service = ref.watch(supabaseServiceProvider);
+  if (service == null) return null;
   return GameAreaActions(ref, service);
 });
 

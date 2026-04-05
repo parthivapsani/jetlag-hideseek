@@ -3,14 +3,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// Supabase client provider
-final supabaseClientProvider = Provider<SupabaseClient>((ref) {
-  return Supabase.instance.client;
-});
+import '../services/supabase_init.dart' show supabaseClientProvider;
 
 // Auth state provider
 final authStateProvider = StreamProvider<User?>((ref) {
   final client = ref.watch(supabaseClientProvider);
+  if (client == null) return Stream.value(null);
   return client.auth.onAuthStateChange.map((event) => event.session?.user);
 });
 
@@ -54,8 +52,9 @@ class DisplayNameNotifier extends StateNotifier<String?> {
 }
 
 // Auth actions provider
-final authActionsProvider = Provider<AuthActions>((ref) {
+final authActionsProvider = Provider<AuthActions?>((ref) {
   final client = ref.watch(supabaseClientProvider);
+  if (client == null) return null;
   return AuthActions(client);
 });
 
