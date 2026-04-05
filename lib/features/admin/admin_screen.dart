@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/models/models.dart';
+import '../../core/providers/game_event_provider.dart';
 import '../../core/services/api_usage_service.dart';
 import '../../core/services/nominatim_service.dart';
 import '../../core/services/supabase_init.dart';
@@ -47,6 +48,25 @@ final _gameAreasProvider =
   final service = ref.watch(supabaseServiceProvider);
   if (service == null) return [];
   return service.getGameAreas();
+});
+
+final _recentEventsProvider =
+    FutureProvider.autoDispose<List<GameEvent>>((ref) async {
+  final client = ref.watch(supabaseClientProvider);
+  if (client == null) return [];
+  final response = await client
+      .from('game_events')
+      .select()
+      .order('created_at', ascending: false)
+      .limit(100);
+  return (response as List).map((e) => GameEvent.fromJson({
+    'id': e['id'],
+    'sessionId': e['session_id'],
+    'roundId': e['round_id'],
+    'eventType': e['event_type'],
+    'payload': e['payload'] ?? {},
+    'createdAt': e['created_at'],
+  })).toList();
 });
 
 class AdminScreen extends ConsumerStatefulWidget {
@@ -133,6 +153,8 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     ref.invalidate(_participantCountsProvider);
     ref.invalidate(_featureRequestsProvider);
     ref.invalidate(_gameAreasProvider);
+    ref.invalidate(_recentEventsProvider);
+    ref.invalidate(apiUsageStatsProvider);
   }
 
   Future<void> _stopSession(String sessionId) async {
@@ -401,6 +423,13 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
           _SectionHeader(title: 'API Usage', icon: Icons.data_usage),
           const SizedBox(height: 12),
           _ApiUsageWidget(),
+
+          const SizedBox(height: 28),
+
+          // ======= Event Log =======
+          _SectionHeader(title: 'Event Log', icon: Icons.list_alt),
+          const SizedBox(height: 12),
+          _EventLogSection(),
 
           const SizedBox(height: 28),
 
@@ -777,6 +806,224 @@ class _FeatureRequestAdminCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _EventLogSection extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_EventLogSection> createState() => _EventLogSectionState();
+}
+
+class _EventLogSectionState extends ConsumerState<_EventLogSection> {
+  String? _filterType;
+
+  static const _eventTypes = [
+    null, // all
+    'phase_change',
+    'question_asked',
+    'question_answered',
+    'card_drawn',
+    'card_played',
+    'curse_activated',
+    'round_started',
+    'round_ended',
+    'game_ended',
+    'timer_pause',
+    'timer_resume',
+    'player_joined',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final eventsAsync = ref.watch(_recentEventsProvider);
+
+    return eventsAsync.when(
+      loading: () => const _LoadingWidget(),
+      error: (e, _) => _ErrorWidget(error: e.toString()),
+      data: (events) {
+        final filtered = _filterType == null
+            ? events
+            : events.where((e) => e.eventType == _filterType).toList();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Filter chips
+            SizedBox(
+              height: 34,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: _eventTypes.map((type) {
+                  final isSelected = _filterType == type;
+                  final label = type == null
+                      ? 'All'
+                      : type.replaceAll('_', ' ');
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: GestureDetector(
+                      onTap: () => setState(() => _filterType = type),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? context.accent.withValues(alpha: 0.15)
+                              : context.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isSelected
+                                ? context.accent
+                                : context.borderSubtle,
+                          ),
+                        ),
+                        child: Text(
+                          _capitalize(label),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight:
+                                isSelected ? FontWeight.w600 : FontWeight.w400,
+                            color: isSelected
+                                ? context.accent
+                                : context.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            if (filtered.isEmpty)
+              _EmptyWidget(message: 'No events')
+            else
+              JetlagCard(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  children: filtered.take(30).map((event) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 4),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _eventColor(event.eventType, context),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _eventLabel(event),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: context.textSecondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          if (event.createdAt != null)
+                            Text(
+                              _formatEventTime(event.createdAt!),
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: context.textTertiary,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures()
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Color _eventColor(String type, BuildContext context) {
+    switch (type) {
+      case 'phase_change':
+        return context.accent;
+      case 'question_asked':
+        return context.orange;
+      case 'question_answered':
+        return context.green;
+      case 'card_drawn':
+      case 'card_played':
+        return context.purple;
+      case 'curse_activated':
+        return context.red;
+      case 'round_started':
+      case 'round_ended':
+      case 'game_started':
+      case 'game_ended':
+        return context.accent;
+      case 'timer_pause':
+      case 'timer_resume':
+        return context.orange;
+      case 'player_joined':
+      case 'player_left':
+        return context.green;
+      default:
+        return context.textTertiary;
+    }
+  }
+
+  String _eventLabel(GameEvent event) {
+    final sessionShort = event.sessionId.substring(0, 8);
+    switch (event.eventType) {
+      case 'phase_change':
+        return '[$sessionShort] Phase \u2192 ${_capitalize(event.payload['phase'] as String? ?? '')}';
+      case 'question_asked':
+        return '[$sessionShort] Question (${_capitalize(event.payload['category'] as String? ?? '')})';
+      case 'question_answered':
+        return '[$sessionShort] Answered: ${event.payload['answerText'] ?? ''}';
+      case 'card_drawn':
+        return '[$sessionShort] Drew card: ${event.payload['cardId'] ?? ''}';
+      case 'card_played':
+        return '[$sessionShort] Played card: ${event.payload['cardId'] ?? ''}';
+      case 'curse_activated':
+        return '[$sessionShort] Curse: ${_capitalize(event.payload['curseType'] as String? ?? '')}';
+      case 'round_started':
+        return '[$sessionShort] Round ${event.payload['roundNumber'] ?? ''} started';
+      case 'round_ended':
+        return '[$sessionShort] Round ended';
+      case 'game_ended':
+        return '[$sessionShort] Game over';
+      case 'timer_pause':
+        return '[$sessionShort] Paused';
+      case 'timer_resume':
+        return '[$sessionShort] Resumed';
+      case 'player_joined':
+        return '[$sessionShort] Player joined team';
+      default:
+        return '[$sessionShort] ${_capitalize(event.eventType.replaceAll('_', ' '))}';
+    }
+  }
+
+  String _formatEventTime(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inDays > 0) return '${diff.inDays}d ago';
+    if (diff.inHours > 0) return '${diff.inHours}h ago';
+    if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
+    return 'now';
+  }
+
+  String _capitalize(String s) {
+    if (s.isEmpty) return s;
+    return s[0].toUpperCase() + s.substring(1);
   }
 }
 
