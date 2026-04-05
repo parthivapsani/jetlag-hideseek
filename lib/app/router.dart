@@ -13,6 +13,7 @@ import '../features/game/round_summary_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/questions/question_drafting_screen.dart';
 import '../features/feature_requests/feature_requests_screen.dart';
+import '../features/admin/admin_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -100,6 +101,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/ideas',
         name: 'ideas',
         builder: (context, state) => const FeatureRequestsScreen(),
+      ),
+      GoRoute(
+        path: '/admin',
+        name: 'admin',
+        builder: (context, state) => const AdminScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

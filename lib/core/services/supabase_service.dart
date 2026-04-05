@@ -494,6 +494,47 @@ class SupabaseService {
     }).eq('id', sessionId);
   }
 
+  // ============ Admin ============
+
+  Future<List<Map<String, dynamic>>> getAllSessions() async {
+    final response = await _client
+        .from('sessions')
+        .select()
+        .order('created_at', ascending: false);
+    return (response as List).map((e) => _sessionFromDb(e)).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> getActiveSessions() async {
+    final response = await _client
+        .from('sessions')
+        .select()
+        .neq('status', 'ended')
+        .order('created_at', ascending: false);
+    return (response as List).map((e) => _sessionFromDb(e)).toList();
+  }
+
+  Future<void> stopSession(String sessionId) async {
+    await _client.from('sessions').update({
+      'status': 'ended',
+      'ended_at': DateTime.now().toIso8601String(),
+    }).eq('id', sessionId);
+  }
+
+  Future<List<Map<String, dynamic>>> getSessionParticipantCounts() async {
+    final response = await _client
+        .from('participants')
+        .select('session_id');
+    // Group by session_id
+    final counts = <String, int>{};
+    for (final row in response as List) {
+      final sid = row['session_id'] as String;
+      counts[sid] = (counts[sid] ?? 0) + 1;
+    }
+    return counts.entries
+        .map((e) => {'session_id': e.key, 'count': e.value})
+        .toList();
+  }
+
   // ============ Feature Requests ============
 
   Future<List<FeatureRequest>> getFeatureRequests() async {
