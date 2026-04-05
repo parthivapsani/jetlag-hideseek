@@ -593,8 +593,7 @@ class SupabaseService {
   }
 
   Map<String, dynamic> _gameAreaToDb(GameArea area) {
-    return {
-      'id': area.id,
+    final data = <String, dynamic>{
       'name': area.name,
       'inclusion_polygons': area.inclusionPolygons.map((p) => p.toJson()).toList(),
       'exclusion_polygons': area.exclusionPolygons.map((p) => p.toJson()).toList(),
@@ -603,6 +602,8 @@ class SupabaseService {
       'default_zoom': area.defaultZoom,
       'created_by': area.createdBy,
     };
+    if (area.id.isNotEmpty) data['id'] = area.id;
+    return data;
   }
 
   List<PolygonData> _parsePolygons(dynamic data) {
