@@ -15,6 +15,7 @@ import '../features/questions/question_drafting_screen.dart';
 import '../features/feature_requests/feature_requests_screen.dart';
 import '../features/admin/admin_screen.dart';
 import '../features/game/post_game_summary.dart';
+import '../features/replay/replay_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -90,6 +91,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/game/:sessionId/summary',
         name: 'game-summary',
         builder: (context, state) => PostGameSummary(
+          sessionId: state.pathParameters['sessionId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/game/:sessionId/replay',
+        name: 'game-replay',
+        builder: (context, state) => ReplayScreen(
           sessionId: state.pathParameters['sessionId']!,
         ),
       ),
