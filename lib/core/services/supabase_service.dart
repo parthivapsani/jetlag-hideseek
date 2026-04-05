@@ -394,6 +394,137 @@ class SupabaseService {
     return _client.storage.from('question_audio').getPublicUrl(fileName);
   }
 
+  // ============ Teams ============
+
+  Future<List<Team>> getTeams(String sessionId) async {
+    final response = await _client
+        .from('teams')
+        .select()
+        .eq('session_id', sessionId)
+        .order('display_order');
+    return (response as List).map((e) => Team.fromJson(_teamFromDb(e))).toList();
+  }
+
+  Future<Team> createTeam({
+    required String sessionId,
+    required String name,
+    required String color,
+    required int displayOrder,
+  }) async {
+    final data = {
+      'session_id': sessionId,
+      'name': name,
+      'color': color,
+      'display_order': displayOrder,
+    };
+    final response = await _client.from('teams').insert(data).select().single();
+    return Team.fromJson(_teamFromDb(response));
+  }
+
+  Future<void> updateParticipantTeam(String participantId, String? teamId) async {
+    await _client.from('participants').update({'team_id': teamId}).eq('id', participantId);
+  }
+
+  // ============ Rounds ============
+
+  Future<List<Round>> getRounds(String sessionId) async {
+    final response = await _client
+        .from('rounds')
+        .select()
+        .eq('session_id', sessionId)
+        .order('round_number');
+    return (response as List).map((e) => Round.fromJson(_roundFromDb(e))).toList();
+  }
+
+  Future<Round?> getActiveRound(String sessionId) async {
+    final response = await _client
+        .from('rounds')
+        .select()
+        .eq('session_id', sessionId)
+        .neq('status', 'found')
+        .order('round_number', ascending: false)
+        .maybeSingle();
+    if (response == null) return null;
+    return Round.fromJson(_roundFromDb(response));
+  }
+
+  Future<Round> createRound({
+    required String sessionId,
+    required int roundNumber,
+    required String hiderTeamId,
+    required String seekerTeamId,
+  }) async {
+    final data = {
+      'session_id': sessionId,
+      'round_number': roundNumber,
+      'hider_team_id': hiderTeamId,
+      'seeker_team_id': seekerTeamId,
+      'status': 'waiting',
+    };
+    final response = await _client.from('rounds').insert(data).select().single();
+    return Round.fromJson(_roundFromDb(response));
+  }
+
+  Future<void> updateRoundStatus(
+    String roundId,
+    String status, {
+    DateTime? hidingStartedAt,
+    DateTime? seekingStartedAt,
+    DateTime? timerPausedAt,
+    int? pausedTimeRemainingSeconds,
+    DateTime? foundAt,
+    int? hideDurationSeconds,
+  }) async {
+    final data = <String, dynamic>{'status': status};
+    if (hidingStartedAt != null) data['hiding_started_at'] = hidingStartedAt.toIso8601String();
+    if (seekingStartedAt != null) data['seeking_started_at'] = seekingStartedAt.toIso8601String();
+    if (timerPausedAt != null) data['timer_paused_at'] = timerPausedAt.toIso8601String();
+    if (pausedTimeRemainingSeconds != null) data['paused_time_remaining_seconds'] = pausedTimeRemainingSeconds;
+    if (foundAt != null) data['found_at'] = foundAt.toIso8601String();
+    if (hideDurationSeconds != null) data['hide_duration_seconds'] = hideDurationSeconds;
+    await _client.from('rounds').update(data).eq('id', roundId);
+  }
+
+  Future<void> setSessionWinner(String sessionId, String teamId, {bool override = false}) async {
+    await _client.from('sessions').update({
+      'winning_team_id': teamId,
+      'winner_override': override,
+      'status': 'ended',
+      'ended_at': DateTime.now().toIso8601String(),
+    }).eq('id', sessionId);
+  }
+
+  // ============ Feature Requests ============
+
+  Future<List<FeatureRequest>> getFeatureRequests() async {
+    final response = await _client
+        .from('feature_requests')
+        .select()
+        .order('created_at', ascending: false);
+    return (response as List).map((e) => FeatureRequest.fromJson(_featureRequestFromDb(e))).toList();
+  }
+
+  Future<FeatureRequest> submitFeatureRequest({
+    required String title,
+    String? description,
+    String? submitterName,
+  }) async {
+    final data = {
+      'title': title,
+      'description': description,
+      'submitter_name': submitterName,
+    };
+    final response = await _client.from('feature_requests').insert(data).select().single();
+    return FeatureRequest.fromJson(_featureRequestFromDb(response));
+  }
+
+  Future<void> updateFeatureRequestStatus(String id, String status) async {
+    await _client.from('feature_requests').update({
+      'status': status,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('id', id);
+  }
+
   // ============ Helpers ============
 
   String _generateRoomCode() {
@@ -454,6 +585,9 @@ class SupabaseService {
       'pausedTimeRemainingSeconds': data['paused_time_remaining_seconds'],
       'endedAt': data['ended_at'],
       'winnerId': data['winner_id'],
+      'winningTeamId': data['winning_team_id'],
+      'winnerOverride': data['winner_override'] ?? false,
+      'totalRounds': data['total_rounds'] ?? 2,
       'createdBy': data['created_by'],
       'createdAt': data['created_at'],
     };
@@ -469,6 +603,7 @@ class SupabaseService {
       'deviceToken': data['device_token'],
       'isConnected': data['is_connected'],
       'isHost': data['is_host'],
+      'teamId': data['team_id'],
       'lastLocationLat': data['last_location_lat'],
       'lastLocationLng': data['last_location_lng'],
       'lastLocationAt': data['last_location_at'],
@@ -516,6 +651,47 @@ class SupabaseService {
       'expiresAt': data['expires_at'],
       'isBlocking': data['is_blocking'],
       'condition': data['condition'],
+    };
+  }
+
+  Map<String, dynamic> _teamFromDb(Map<String, dynamic> data) {
+    return {
+      'id': data['id'],
+      'sessionId': data['session_id'],
+      'name': data['name'],
+      'color': data['color'],
+      'displayOrder': data['display_order'],
+      'createdAt': data['created_at'],
+    };
+  }
+
+  Map<String, dynamic> _roundFromDb(Map<String, dynamic> data) {
+    return {
+      'id': data['id'],
+      'sessionId': data['session_id'],
+      'roundNumber': data['round_number'],
+      'hiderTeamId': data['hider_team_id'],
+      'seekerTeamId': data['seeker_team_id'],
+      'status': data['status'],
+      'hidingStartedAt': data['hiding_started_at'],
+      'seekingStartedAt': data['seeking_started_at'],
+      'timerPausedAt': data['timer_paused_at'],
+      'pausedTimeRemainingSeconds': data['paused_time_remaining_seconds'],
+      'foundAt': data['found_at'],
+      'hideDurationSeconds': data['hide_duration_seconds'],
+      'createdAt': data['created_at'],
+    };
+  }
+
+  Map<String, dynamic> _featureRequestFromDb(Map<String, dynamic> data) {
+    return {
+      'id': data['id'],
+      'title': data['title'],
+      'description': data['description'],
+      'status': data['status'] ?? 'open',
+      'submitterName': data['submitter_name'],
+      'createdAt': data['created_at'],
+      'updatedAt': data['updated_at'],
     };
   }
 
