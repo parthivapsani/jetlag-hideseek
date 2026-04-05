@@ -4,3 +4,6 @@ export 'question_provider.dart';
 export 'card_provider.dart';
 export 'timer_provider.dart';
 export 'game_state_provider.dart';
+export 'team_provider.dart';
+export 'feature_request_provider.dart';
+export 'round_provider.dart';

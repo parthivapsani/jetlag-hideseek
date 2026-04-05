@@ -83,6 +83,13 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   Expanded(
                     child: TextButton.icon(
+                      onPressed: () => context.push('/ideas'),
+                      icon: const Icon(Icons.lightbulb_outline),
+                      label: const Text('Ideas'),
+                    ),
+                  ),
+                  Expanded(
+                    child: TextButton.icon(
                       onPressed: () => context.push('/settings'),
                       icon: const Icon(Icons.settings_outlined),
                       label: const Text('Settings'),

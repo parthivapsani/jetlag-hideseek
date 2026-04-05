@@ -13,6 +13,7 @@ import '../features/game/spectator_view.dart';
 import '../features/game/game_over_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/questions/question_drafting_screen.dart';
+import '../features/feature_requests/feature_requests_screen.dart';
 import '../core/providers/auth_provider.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -94,6 +95,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => QuestionDraftingScreen(
           sessionId: state.pathParameters['sessionId']!,
         ),
+      ),
+      GoRoute(
+        path: '/ideas',
+        name: 'ideas',
+        builder: (context, state) => const FeatureRequestsScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
