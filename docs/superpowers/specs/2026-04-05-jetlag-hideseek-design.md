@@ -107,6 +107,12 @@ Pure card-based (no coins). Card types:
 - **Curse** — restricts seekers (express route only, long shot, runner, museum)
 - **Time Trap** — placed at stations, triggers when seekers arrive
 
+Card mechanics:
+- **Draw without replacement** — cards come from a draw pile, never re-drawn until the pile is empty, then discard pile reshuffles back in
+- **Draw N, keep K** — after hiders answer a question, they see N cards face-up, pick K to keep, rest go to discard (e.g. Matching: draw 3, keep 1)
+- **Play anytime** — hiders can play cards from their hand at any point during the round (curses, time bonuses, powerups, time traps)
+- **Round-scoped** — each round starts with a fresh shuffled deck. Cards do not carry between rounds.
+
 ### Squish Boundary
 
 Since the hider can move within their hiding zone (configurable: 0-1 mile), questions have uncertainty. The squish boundary visualizes the uncertainty zone on the map. Disabled in endgame (hider cannot move, questions are exact).
