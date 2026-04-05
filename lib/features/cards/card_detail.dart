@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/models.dart';
 import '../../core/providers/providers.dart';
+import '../../design/colors.dart';
+import '../../design/theme.dart';
+import '../../design/widgets/jetlag_badge.dart';
+import '../../design/widgets/jetlag_button.dart';
 
 class CardDetail extends ConsumerStatefulWidget {
   final HiderCard hiderCard;
@@ -23,7 +27,6 @@ class _CardDetailState extends ConsumerState<CardDetail> {
 
   @override
   Widget build(BuildContext context) {
-    final color = _getCardColor(widget.gameCard.type);
     final isBlocked = ref.watch(isBlockedByCurseProvider);
 
     return DraggableScrollableSheet(
@@ -44,7 +47,7 @@ class _CardDetailState extends ConsumerState<CardDetail> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 24),
                 decoration: BoxDecoration(
-                  color: Colors.grey[400],
+                  color: context.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -53,19 +56,9 @@ class _CardDetailState extends ConsumerState<CardDetail> {
             // Card type badge
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    _getCardTypeName(widget.gameCard.type),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                JetlagBadge(
+                  label: _getCardTypeName(widget.gameCard.type),
+                  color: _getBadgeColor(widget.gameCard.type),
                 ),
               ],
             ),
@@ -74,16 +67,18 @@ class _CardDetailState extends ConsumerState<CardDetail> {
             // Card name
             Text(
               widget.gameCard.name,
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: context.textPrimary,
+              ),
             ),
             const SizedBox(height: 8),
 
             // Description
             Text(
               widget.gameCard.description,
-              style: Theme.of(context).textTheme.bodyLarge,
+              style: TextStyle(fontSize: 14, color: context.textSecondary),
             ),
             const SizedBox(height: 24),
 
@@ -93,21 +88,25 @@ class _CardDetailState extends ConsumerState<CardDetail> {
 
             // Rules
             if (widget.gameCard.rules != null) ...[
-              const Text(
+              Text(
                 'Rules',
                 style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: context.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
+                  color: context.surface2,
+                  borderRadius: BorderRadius.circular(JetlagRadii.sm),
                 ),
-                child: Text(widget.gameCard.rules!),
+                child: Text(
+                  widget.gameCard.rules!,
+                  style: TextStyle(color: context.textSecondary, fontSize: 13),
+                ),
               ),
               const SizedBox(height: 24),
             ],
@@ -131,7 +130,7 @@ class _CardDetailState extends ConsumerState<CardDetail> {
           content: card.timeBonusMinutes != null
               ? '+${card.timeBonusMinutes} minutes'
               : '+${(card.timeBonusPercentage! * 100).toInt()}%',
-          color: Colors.green,
+          color: context.green,
         );
 
       case CardType.powerup:
@@ -139,7 +138,7 @@ class _CardDetailState extends ConsumerState<CardDetail> {
           icon: Icons.flash_on,
           title: 'Effect',
           content: _getPowerupDescription(card.powerupEffect),
-          color: Colors.blue,
+          color: context.accent,
         );
 
       case CardType.curse:
@@ -149,7 +148,7 @@ class _CardDetailState extends ConsumerState<CardDetail> {
               icon: Icons.warning,
               title: 'Curse Effect',
               content: _getCurseDescription(card.curseType),
-              color: Colors.red,
+              color: context.red,
             ),
             if (card.curseDurationMinutes != null) ...[
               const SizedBox(height: 12),
@@ -157,7 +156,7 @@ class _CardDetailState extends ConsumerState<CardDetail> {
                 icon: Icons.timer,
                 title: 'Duration',
                 content: '${card.curseDurationMinutes} minutes',
-                color: Colors.orange,
+                color: context.orange,
               ),
             ],
             if (card.isBlocking) ...[
@@ -165,16 +164,16 @@ class _CardDetailState extends ConsumerState<CardDetail> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.red.shade100,
-                  borderRadius: BorderRadius.circular(8),
+                  color: context.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(JetlagRadii.sm),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.block, color: Colors.red),
-                    SizedBox(width: 8),
+                    Icon(Icons.block, color: context.red, size: 20),
+                    const SizedBox(width: 8),
                     Text(
                       'This curse blocks card play',
-                      style: TextStyle(color: Colors.red),
+                      style: TextStyle(color: context.red, fontSize: 13),
                     ),
                   ],
                 ),
@@ -188,7 +187,7 @@ class _CardDetailState extends ConsumerState<CardDetail> {
           icon: Icons.location_on,
           title: 'Trap Bonus',
           content: '+${card.trapBonusPerHourMinutes} minutes per hour untriggered',
-          color: Colors.purple,
+          color: context.purple,
         );
     }
   }
@@ -196,71 +195,53 @@ class _CardDetailState extends ConsumerState<CardDetail> {
   Widget _buildActionButtons(bool isBlocked) {
     final card = widget.gameCard;
 
-    // Time bonuses are automatic - no action needed
+    // Time bonuses are automatic
     if (card.type == CardType.timeBonus) {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.green.shade50,
-          borderRadius: BorderRadius.circular(8),
+          color: context.green.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(JetlagRadii.sm),
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.auto_awesome, color: Colors.green),
-            SizedBox(width: 8),
+            Icon(Icons.auto_awesome, color: context.green, size: 20),
+            const SizedBox(width: 8),
             Text(
               'Bonus applies automatically',
-              style: TextStyle(color: Colors.green),
+              style: TextStyle(color: context.green, fontSize: 13),
             ),
           ],
         ),
       );
     }
 
-    // Check if card can be played
     final canPlay = !isBlocked && _canPlayCard();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ElevatedButton(
+        JetlagButton(
+          label: _getPlayButtonText(),
+          variant: JetlagButtonVariant.primary,
+          isLoading: _isPlaying,
           onPressed: canPlay && !_isPlaying ? _playCard : null,
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            backgroundColor: _getCardColor(card.type),
-            foregroundColor: Colors.white,
-          ),
-          child: _isPlaying
-              ? const SizedBox(
-                  height: 24,
-                  width: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : Text(
-                  _getPlayButtonText(),
-                  style: const TextStyle(fontSize: 18),
-                ),
         ),
         if (!canPlay && isBlocked)
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
               'Cannot play while a blocking curse is active',
-              style: TextStyle(color: Colors.red[700]),
+              style: TextStyle(color: context.red, fontSize: 13),
               textAlign: TextAlign.center,
             ),
           ),
         const SizedBox(height: 12),
-        OutlinedButton(
+        JetlagButton(
+          label: 'Discard',
+          variant: JetlagButtonVariant.secondary,
           onPressed: !_isPlaying ? _discardCard : null,
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-          ),
-          child: const Text('Discard'),
         ),
       ],
     );
@@ -268,13 +249,9 @@ class _CardDetailState extends ConsumerState<CardDetail> {
 
   bool _canPlayCard() {
     final card = widget.gameCard;
-
-    // Check play conditions
     if (card.playCondition != null) {
-      // TODO: Implement condition checking
       return true;
     }
-
     return true;
   }
 
@@ -298,7 +275,6 @@ class _CardDetailState extends ConsumerState<CardDetail> {
       final cardActions = ref.read(cardActionsProvider);
 
       if (widget.gameCard.type == CardType.curse) {
-        // Activate curse
         await cardActions.activateCurse(
           cardId: widget.gameCard.id,
           curseType: widget.gameCard.curseType!,
@@ -332,19 +308,21 @@ class _CardDetailState extends ConsumerState<CardDetail> {
   Future<void> _discardCard() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Discard Card?'),
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ctx.surface,
+        title: Text('Discard Card?', style: TextStyle(color: ctx.textPrimary)),
         content: Text(
           'Are you sure you want to discard ${widget.gameCard.name}?',
+          style: TextStyle(color: ctx.textSecondary),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel', style: TextStyle(color: ctx.textSecondary)),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Discard'),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Discard', style: TextStyle(color: ctx.red)),
           ),
         ],
       ),
@@ -373,16 +351,16 @@ class _CardDetailState extends ConsumerState<CardDetail> {
     }
   }
 
-  Color _getCardColor(CardType type) {
+  JetlagBadgeColor _getBadgeColor(CardType type) {
     switch (type) {
       case CardType.timeBonus:
-        return Colors.green;
+        return JetlagBadgeColor.green;
       case CardType.powerup:
-        return Colors.blue;
+        return JetlagBadgeColor.blue;
       case CardType.curse:
-        return Colors.red;
+        return JetlagBadgeColor.red;
       case CardType.timeTrap:
-        return Colors.purple;
+        return JetlagBadgeColor.purple;
     }
   }
 
@@ -450,9 +428,9 @@ class _InfoCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(JetlagRadii.lg),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(
         children: [
@@ -466,15 +444,16 @@ class _InfoCard extends StatelessWidget {
                   title,
                   style: TextStyle(
                     color: color,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
                     fontSize: 12,
                   ),
                 ),
                 Text(
                   content,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w700,
+                    color: context.textPrimary,
                   ),
                 ),
               ],

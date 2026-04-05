@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/providers/providers.dart';
-import '../../app/theme.dart';
+import '../../design/colors.dart';
+import '../../design/theme.dart';
+import '../../design/widgets/jetlag_card.dart';
+import '../../design/widgets/jetlag_button.dart';
 
 // Theme mode provider
 final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
@@ -28,132 +31,221 @@ class SettingsScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
 
     return Scaffold(
+      backgroundColor: context.bg,
       appBar: AppBar(
-        title: const Text('Settings'),
+        backgroundColor: context.bg,
+        foregroundColor: context.textPrimary,
+        title: Text(
+          'Settings',
+          style: TextStyle(color: context.textPrimary, fontWeight: FontWeight.w700),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back, color: context.textPrimary),
           onPressed: () => context.pop(),
         ),
+        elevation: 0,
       ),
       body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
           // Profile section
-          _SectionHeader(title: 'Profile'),
-          ListTile(
-            leading: CircleAvatar(
-              backgroundColor: JetLagTheme.primaryBlue,
-              child: Text(
-                (displayName ?? 'P')[0].toUpperCase(),
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-            title: Text(displayName ?? 'Player'),
-            subtitle: Text(user?.email ?? 'Playing anonymously'),
-            trailing: const Icon(Icons.chevron_right),
+          _SectionLabel('Profile'),
+          const SizedBox(height: 8),
+          JetlagCard(
             onTap: () => context.push('/auth'),
-          ),
-
-          const Divider(),
-
-          // Appearance section
-          _SectionHeader(title: 'Appearance'),
-          ListTile(
-            leading: const Icon(Icons.brightness_6),
-            title: const Text('Theme'),
-            subtitle: Text(_getThemeModeName(themeMode)),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showThemePicker(context, ref),
-          ),
-
-          const Divider(),
-
-          // Game settings
-          _SectionHeader(title: 'Game Defaults'),
-          ListTile(
-            leading: const Icon(Icons.timer),
-            title: const Text('Default Hiding Period'),
-            subtitle: const Text('1 hour'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showDurationPicker(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.circle_outlined),
-            title: const Text('Default Zone Radius'),
-            subtitle: const Text('0.5 miles'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showRadiusPicker(context),
-          ),
-
-          const Divider(),
-
-          // Map settings
-          _SectionHeader(title: 'Map'),
-          SwitchListTile(
-            secondary: const Icon(Icons.traffic),
-            title: const Text('Show Traffic'),
-            subtitle: const Text('Display real-time traffic on map'),
-            value: false, // TODO: Implement
-            onChanged: (value) {},
-          ),
-          SwitchListTile(
-            secondary: const Icon(Icons.directions_transit),
-            title: const Text('Show Transit'),
-            subtitle: const Text('Display transit lines and stations'),
-            value: true, // TODO: Implement
-            onChanged: (value) {},
-          ),
-
-          const Divider(),
-
-          // About section
-          _SectionHeader(title: 'About'),
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: const Text('About Jet Lag Hide & Seek'),
-            onTap: () => _showAbout(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.help_outline),
-            title: const Text('How to Play'),
-            onTap: () => _showHowToPlay(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.privacy_tip_outlined),
-            title: const Text('Privacy Policy'),
-            onTap: () {
-              // TODO: Open privacy policy
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.code),
-            title: const Text('Open Source Licenses'),
-            onTap: () => showLicensePage(
-              context: context,
-              applicationName: 'Jet Lag Hide & Seek',
-              applicationVersion: '1.0.0',
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: context.accent.withValues(alpha: 0.2),
+                  child: Text(
+                    (displayName ?? 'P')[0].toUpperCase(),
+                    style: TextStyle(
+                      color: context.accent,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName ?? 'Player',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: context.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        user?.email ?? 'Playing anonymously',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: context.textTertiary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: context.textTertiary, size: 20),
+              ],
             ),
           ),
-
           const SizedBox(height: 24),
 
-          // Version info
+          // Appearance section
+          _SectionLabel('Appearance'),
+          const SizedBox(height: 8),
+          JetlagCard(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.brightness_6, size: 18, color: context.textSecondary),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Theme',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // Pill selector
+                Container(
+                  decoration: BoxDecoration(
+                    color: context.surface2,
+                    borderRadius: BorderRadius.circular(JetlagRadii.sm),
+                  ),
+                  padding: const EdgeInsets.all(3),
+                  child: Row(
+                    children: [
+                      _ThemePill(
+                        label: 'System',
+                        isActive: themeMode == ThemeMode.system,
+                        onTap: () => ref.read(themeModeProvider.notifier).setThemeMode(ThemeMode.system),
+                      ),
+                      _ThemePill(
+                        label: 'Light',
+                        isActive: themeMode == ThemeMode.light,
+                        onTap: () => ref.read(themeModeProvider.notifier).setThemeMode(ThemeMode.light),
+                      ),
+                      _ThemePill(
+                        label: 'Dark',
+                        isActive: themeMode == ThemeMode.dark,
+                        onTap: () => ref.read(themeModeProvider.notifier).setThemeMode(ThemeMode.dark),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Game Defaults section
+          _SectionLabel('Game Defaults'),
+          const SizedBox(height: 8),
+          JetlagCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                _SettingsRow(
+                  icon: Icons.timer,
+                  label: 'Default Hiding Period',
+                  value: '1 hour',
+                  onTap: () => _showComingSoon(context),
+                ),
+                Divider(height: 1, color: context.borderSubtle),
+                _SettingsRow(
+                  icon: Icons.circle_outlined,
+                  label: 'Default Zone Radius',
+                  value: '0.5 miles',
+                  onTap: () => _showComingSoon(context),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Map section
+          _SectionLabel('Map'),
+          const SizedBox(height: 8),
+          JetlagCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                _ToggleRow(
+                  icon: Icons.traffic,
+                  label: 'Show Traffic',
+                  subtitle: 'Display real-time traffic on map',
+                  value: false,
+                  onChanged: (value) {},
+                ),
+                Divider(height: 1, color: context.borderSubtle),
+                _ToggleRow(
+                  icon: Icons.directions_transit,
+                  label: 'Show Transit',
+                  subtitle: 'Display transit lines and stations',
+                  value: true,
+                  onChanged: (value) {},
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // About section
+          _SectionLabel('About'),
+          const SizedBox(height: 8),
+          JetlagCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                _SettingsRow(
+                  icon: Icons.info_outline,
+                  label: 'About Jet Lag Hide & Seek',
+                  onTap: () => _showAbout(context),
+                ),
+                Divider(height: 1, color: context.borderSubtle),
+                _SettingsRow(
+                  icon: Icons.help_outline,
+                  label: 'How to Play',
+                  onTap: () => _showHowToPlay(context),
+                ),
+                Divider(height: 1, color: context.borderSubtle),
+                _SettingsRow(
+                  icon: Icons.privacy_tip_outlined,
+                  label: 'Privacy Policy',
+                  onTap: () {},
+                ),
+                Divider(height: 1, color: context.borderSubtle),
+                _SettingsRow(
+                  icon: Icons.code,
+                  label: 'Open Source Licenses',
+                  onTap: () => showLicensePage(
+                    context: context,
+                    applicationName: 'Jet Lag Hide & Seek',
+                    applicationVersion: '1.0.0',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 28),
+
+          // Version
           Center(
             child: Text(
               'Version 1.0.0',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontSize: 12,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Center(
-            child: Text(
-              'Made with Flutter',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontSize: 12,
-              ),
+              style: TextStyle(fontSize: 12, color: context.textTertiary),
             ),
           ),
           const SizedBox(height: 24),
@@ -162,51 +254,7 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  String _getThemeModeName(ThemeMode mode) {
-    switch (mode) {
-      case ThemeMode.system:
-        return 'System default';
-      case ThemeMode.light:
-        return 'Light';
-      case ThemeMode.dark:
-        return 'Dark';
-    }
-  }
-
-  void _showThemePicker(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Choose Theme'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: ThemeMode.values.map((mode) {
-            return RadioListTile<ThemeMode>(
-              title: Text(_getThemeModeName(mode)),
-              value: mode,
-              groupValue: ref.read(themeModeProvider),
-              onChanged: (value) {
-                if (value != null) {
-                  ref.read(themeModeProvider.notifier).setThemeMode(value);
-                }
-                Navigator.pop(context);
-              },
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  void _showDurationPicker(BuildContext context) {
-    // TODO: Implement duration picker
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Coming soon!')),
-    );
-  }
-
-  void _showRadiusPicker(BuildContext context) {
-    // TODO: Implement radius picker
+  void _showComingSoon(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Coming soon!')),
     );
@@ -215,33 +263,35 @@ class SettingsScreen extends ConsumerWidget {
   void _showAbout(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('About'),
-        content: const Column(
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ctx.surface,
+        title: Text('About', style: TextStyle(color: ctx.textPrimary)),
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Jet Lag Hide & Seek Companion',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(fontWeight: FontWeight.bold, color: ctx.textPrimary),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               'A companion app for playing Jet Lag: The Game Hide and Seek format, '
               'inspired by seasons 12 and 16 of the show.',
+              style: TextStyle(color: ctx.textSecondary),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               'This is a fan-made project and is not affiliated with '
               'Wendover Productions or Jet Lag: The Game.',
-              style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+              style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: ctx.textTertiary),
             ),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Close', style: TextStyle(color: ctx.accent)),
           ),
         ],
       ),
@@ -252,6 +302,7 @@ class SettingsScreen extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: context.surface,
       builder: (context) => DraggableScrollableSheet(
         initialChildSize: 0.7,
         minChildSize: 0.5,
@@ -267,59 +318,32 @@ class SettingsScreen extends ConsumerWidget {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 24),
                 decoration: BoxDecoration(
-                  color: Colors.grey[400],
+                  color: context.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
             Text(
               'How to Play',
-              style: Theme.of(context).textTheme.headlineSmall,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: context.textPrimary,
+              ),
             ),
             const SizedBox(height: 24),
-            _HowToPlayStep(
-              number: 1,
-              title: 'Create or Join a Game',
-              description:
-                  'One player creates a game by drawing the game area on the map. '
-                  'Other players join using the 6-character room code.',
-            ),
-            _HowToPlayStep(
-              number: 2,
-              title: 'Choose Roles',
-              description:
-                  'One player becomes the Hider, the rest are Seekers. '
-                  'Spectators can watch without participating.',
-            ),
-            _HowToPlayStep(
-              number: 3,
-              title: 'Hiding Period',
-              description:
-                  'The Hider has a set amount of time to travel anywhere within '
-                  'the game area. Once they stop, they establish a hiding zone.',
-            ),
-            _HowToPlayStep(
-              number: 4,
-              title: 'Seeking Phase',
-              description:
-                  'Seekers ask questions from 6 categories (Matching, Measuring, '
-                  'Radar, Thermometer, Tentacles, Photo) to narrow down '
-                  'the Hider\'s location. Each question lets the Hider draw cards.',
-            ),
-            _HowToPlayStep(
-              number: 5,
-              title: 'Cards & Curses',
-              description:
-                  'Cards give the Hider bonus time, powerups, or curses that '
-                  'restrict their movement. Strategic card play is key!',
-            ),
-            _HowToPlayStep(
-              number: 6,
-              title: 'Endgame',
-              description:
-                  'Seekers must physically find the Hider within the hiding zone '
-                  'before time runs out. If the Hider survives, they win!',
-            ),
+            _HowToPlayStep(number: 1, title: 'Create or Join a Game',
+              description: 'One player creates a game by drawing the game area on the map. Other players join using the 6-character room code.'),
+            _HowToPlayStep(number: 2, title: 'Choose Roles',
+              description: 'One player becomes the Hider, the rest are Seekers. Spectators can watch without participating.'),
+            _HowToPlayStep(number: 3, title: 'Hiding Period',
+              description: 'The Hider has a set amount of time to travel anywhere within the game area. Once they stop, they establish a hiding zone.'),
+            _HowToPlayStep(number: 4, title: 'Seeking Phase',
+              description: 'Seekers ask questions from 6 categories (Matching, Measuring, Radar, Thermometer, Tentacles, Photo) to narrow down the Hider\'s location. Each question lets the Hider draw cards.'),
+            _HowToPlayStep(number: 5, title: 'Cards & Curses',
+              description: 'Cards give the Hider bonus time, powerups, or curses that restrict their movement. Strategic card play is key!'),
+            _HowToPlayStep(number: 6, title: 'Endgame',
+              description: 'Seekers must physically find the Hider within the hiding zone before time runs out. If the Hider survives, they win!'),
           ],
         ),
       ),
@@ -327,23 +351,150 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
+class _SectionLabel extends StatelessWidget {
   final String title;
-
-  const _SectionHeader({required this.title});
+  const _SectionLabel(this.title);
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+      padding: const EdgeInsets.only(left: 4),
       child: Text(
         title.toUpperCase(),
         style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          color: Theme.of(context).colorScheme.primary,
-          letterSpacing: 1,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: context.accent,
+          letterSpacing: 0.8,
         ),
+      ),
+    );
+  }
+}
+
+class _ThemePill extends StatelessWidget {
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _ThemePill({
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isActive ? context.accent : Colors.transparent,
+            borderRadius: BorderRadius.circular(JetlagRadii.sm - 2),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: isActive ? Colors.white : context.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String? value;
+  final VoidCallback? onTap;
+
+  const _SettingsRow({
+    required this.icon,
+    required this.label,
+    this.value,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(JetlagRadii.lg),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: context.textSecondary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: context.textPrimary,
+                ),
+              ),
+            ),
+            if (value != null)
+              Text(
+                value!,
+                style: TextStyle(fontSize: 13, color: context.textTertiary),
+              ),
+            const SizedBox(width: 4),
+            Icon(Icons.chevron_right, size: 18, color: context.textTertiary),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ToggleRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _ToggleRow({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: context.textSecondary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: TextStyle(fontSize: 14, color: context.textPrimary)),
+                Text(subtitle, style: TextStyle(fontSize: 12, color: context.textTertiary)),
+              ],
+            ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: context.accent,
+          ),
+        ],
       ),
     );
   }
@@ -368,18 +519,19 @@ class _HowToPlayStep extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 32,
-            height: 32,
+            width: 30,
+            height: 30,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer,
+              color: context.accent.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: Center(
               child: Text(
                 '$number',
                 style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: context.accent,
                 ),
               ),
             ),
@@ -391,13 +543,17 @@ class _HowToPlayStep extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: context.textPrimary,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   description,
                   style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 13,
+                    color: context.textSecondary,
                   ),
                 ),
               ],

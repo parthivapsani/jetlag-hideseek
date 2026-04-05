@@ -3,6 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/models.dart';
 import '../../core/providers/providers.dart';
+import '../../design/colors.dart';
+import '../../design/theme.dart';
+import '../../design/widgets/jetlag_badge.dart';
+import '../../design/widgets/jetlag_button.dart';
+import '../../design/widgets/jetlag_card.dart';
+import '../../design/widgets/jetlag_input.dart';
 
 class QuestionDetail extends ConsumerStatefulWidget {
   final Question question;
@@ -50,32 +56,21 @@ class _QuestionDetailState extends ConsumerState<QuestionDetail> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 24),
                 decoration: BoxDecoration(
-                  color: Colors.grey[400],
+                  color: context.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
 
-            // Category chip
+            // Category chip + test badge
             Row(
               children: [
-                _CategoryChip(category: widget.question.category),
+                _CategoryBadge(category: widget.question.category),
                 const Spacer(),
                 if (widget.testMode)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade100,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text(
-                      'TEST MODE',
-                      style: TextStyle(
-                        color: Colors.orange,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                  JetlagBadge(
+                    label: 'Test Mode',
+                    color: JetlagBadgeColor.orange,
                   ),
               ],
             ),
@@ -84,7 +79,11 @@ class _QuestionDetailState extends ConsumerState<QuestionDetail> {
             // Question text
             Text(
               widget.question.text,
-              style: Theme.of(context).textTheme.headlineSmall,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: context.textPrimary,
+              ),
             ),
             const SizedBox(height: 24),
 
@@ -96,13 +95,13 @@ class _QuestionDetailState extends ConsumerState<QuestionDetail> {
                   value: '${widget.question.cardsDraw}',
                   label: 'Draw',
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 _StatBox(
                   icon: Icons.check_circle,
                   value: '${widget.question.cardsKeep}',
                   label: 'Keep',
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 _StatBox(
                   icon: Icons.timer,
                   value: '${widget.question.responseTimeMinutes}',
@@ -118,62 +117,48 @@ class _QuestionDetailState extends ConsumerState<QuestionDetail> {
 
             // Rules
             if (widget.question.rules != null) ...[
-              const Text(
+              Text(
                 'Rules',
                 style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: context.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(8),
+                  color: context.accent.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(JetlagRadii.sm),
                 ),
-                child: Text(widget.question.rules!),
+                child: Text(
+                  widget.question.rules!,
+                  style: TextStyle(color: context.textSecondary, fontSize: 13),
+                ),
               ),
               const SizedBox(height: 24),
             ],
 
-            // Custom value input (for questions with placeholders)
+            // Custom value input
             if (widget.question.text.contains('[')) ...[
-              const Text(
-                'Customize Question',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
+              JetlagInput(
+                label: 'Customize Question',
+                hint: _getPlaceholderHint(),
                 controller: _customValueController,
-                decoration: InputDecoration(
-                  hintText: _getPlaceholderHint(),
-                  border: const OutlineInputBorder(),
-                ),
               ),
               const SizedBox(height: 24),
             ],
 
             // Ask button
-            ElevatedButton(
+            JetlagButton(
+              label: widget.testMode ? 'Ask (Test Mode)' : 'Ask Question',
+              icon: Icons.send,
+              variant: widget.testMode
+                  ? JetlagButtonVariant.secondary
+                  : JetlagButtonVariant.primary,
+              isLoading: _isAsking,
               onPressed: widget.canAsk && !_isAsking ? _askQuestion : null,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: widget.testMode ? Colors.orange : null,
-              ),
-              child: _isAsking
-                  ? const SizedBox(
-                      height: 24,
-                      width: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(
-                      widget.testMode ? 'Ask (Test Mode)' : 'Ask Question',
-                      style: const TextStyle(fontSize: 18),
-                    ),
             ),
 
             if (!widget.canAsk && !widget.testMode)
@@ -181,9 +166,7 @@ class _QuestionDetailState extends ConsumerState<QuestionDetail> {
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   'Category is on cooldown',
-                  style: TextStyle(
-                    color: Colors.orange[700],
-                  ),
+                  style: TextStyle(color: context.orange, fontSize: 13),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -207,29 +190,28 @@ class _QuestionDetailState extends ConsumerState<QuestionDetail> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[300]!),
-        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: context.border),
+        borderRadius: BorderRadius.circular(JetlagRadii.sm),
       ),
       child: Row(
         children: [
-          Icon(icon, color: Colors.grey[600]),
+          Icon(icon, color: context.textTertiary),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Answer Type',
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
                     fontSize: 12,
+                    color: context.textTertiary,
                   ),
                 ),
                 Text(
                   description,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(color: context.textSecondary, fontSize: 13),
                 ),
               ],
             ),
@@ -281,35 +263,25 @@ class _QuestionDetailState extends ConsumerState<QuestionDetail> {
   }
 }
 
-class _CategoryChip extends StatelessWidget {
+class _CategoryBadge extends StatelessWidget {
   final QuestionCategory category;
 
-  const _CategoryChip({required this.category});
+  const _CategoryBadge({required this.category});
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (category) {
-      QuestionCategory.matching => Colors.blue,
-      QuestionCategory.measuring => Colors.purple,
-      QuestionCategory.radar => Colors.green,
-      QuestionCategory.thermometer => Colors.orange,
-      QuestionCategory.tentacles => Colors.teal,
-      QuestionCategory.photo => Colors.pink,
+    final badgeColor = switch (category) {
+      QuestionCategory.matching => JetlagBadgeColor.blue,
+      QuestionCategory.measuring => JetlagBadgeColor.purple,
+      QuestionCategory.radar => JetlagBadgeColor.green,
+      QuestionCategory.thermometer => JetlagBadgeColor.orange,
+      QuestionCategory.tentacles => JetlagBadgeColor.blue,
+      QuestionCategory.photo => JetlagBadgeColor.red,
     };
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        category.displayName,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+    return JetlagBadge(
+      label: category.displayName,
+      color: badgeColor,
     );
   }
 }
@@ -331,26 +303,24 @@ class _StatBox extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.grey[100],
-          borderRadius: BorderRadius.circular(8),
+          color: context.surface2,
+          borderRadius: BorderRadius.circular(JetlagRadii.sm),
         ),
         child: Column(
           children: [
-            Icon(icon, size: 24),
+            Icon(icon, size: 22, color: context.textSecondary),
             const SizedBox(height: 4),
             Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w700,
+                color: context.textPrimary,
               ),
             ),
             Text(
               label,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 12, color: context.textTertiary),
             ),
           ],
         ),

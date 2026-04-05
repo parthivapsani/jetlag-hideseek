@@ -7,6 +7,12 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/models/models.dart';
 import '../../core/providers/providers.dart';
 import '../../core/services/supabase_service.dart';
+import '../../design/colors.dart';
+import '../../design/theme.dart';
+import '../../design/widgets/jetlag_badge.dart';
+import '../../design/widgets/jetlag_button.dart';
+import '../../design/widgets/jetlag_card.dart';
+import '../../design/widgets/jetlag_input.dart';
 import '../cards/card_draw_screen.dart';
 
 class AnswerInterface extends ConsumerStatefulWidget {
@@ -59,23 +65,26 @@ class _AnswerInterfaceState extends ConsumerState<AnswerInterface> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isUrgent ? Colors.red.shade100 : Colors.blue.shade100,
-              borderRadius: BorderRadius.circular(12),
+              color: (isUrgent ? context.red : context.accent).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(JetlagRadii.lg),
+              border: Border.all(
+                color: (isUrgent ? context.red : context.accent).withValues(alpha: 0.3),
+              ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
                   Icons.timer,
-                  color: isUrgent ? Colors.red : Colors.blue,
+                  color: isUrgent ? context.red : context.accent,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   'Time Remaining: ${_formatDuration(remainingTime)}',
                   style: TextStyle(
                     fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: isUrgent ? Colors.red : Colors.blue,
+                    fontWeight: FontWeight.w700,
+                    color: isUrgent ? context.red : context.accent,
                   ),
                 ),
               ],
@@ -86,14 +95,18 @@ class _AnswerInterfaceState extends ConsumerState<AnswerInterface> {
           // Question
           Text(
             question.text,
-            style: Theme.of(context).textTheme.headlineSmall,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: context.textPrimary,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             widget.sessionQuestion.category.displayName,
             style: TextStyle(
               color: _getCategoryColor(widget.sessionQuestion.category),
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 24),
@@ -103,17 +116,20 @@ class _AnswerInterfaceState extends ConsumerState<AnswerInterface> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.amber.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.amber.shade200),
+                color: context.orange.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(JetlagRadii.sm),
+                border: Border.all(color: context.orange.withValues(alpha: 0.2)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.info, color: Colors.amber),
+                  Icon(Icons.info, color: context.orange, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(question.rules!),
+                    child: Text(
+                      question.rules!,
+                      style: TextStyle(color: context.textSecondary, fontSize: 13),
+                    ),
                   ),
                 ],
               ),
@@ -126,28 +142,14 @@ class _AnswerInterfaceState extends ConsumerState<AnswerInterface> {
           const SizedBox(height: 24),
 
           // Submit button
-          ElevatedButton(
+          JetlagButton(
+            label: 'Submit Answer',
+            icon: Icons.check,
+            variant: JetlagButtonVariant.primary,
+            isLoading: _isSubmitting,
             onPressed: _canSubmit(question) && !_isSubmitting
                 ? () => _submitAnswer(question)
                 : null,
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-            ),
-            child: _isSubmitting
-                ? const SizedBox(
-                    height: 24,
-                    width: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Text(
-                    'Submit Answer',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
           ),
           const SizedBox(height: 16),
 
@@ -161,13 +163,10 @@ class _AnswerInterfaceState extends ConsumerState<AnswerInterface> {
   Widget _buildAnswerInput(Question question) {
     switch (question.answerType) {
       case AnswerType.text:
-        return TextField(
+        return JetlagInput(
+          label: 'Your Answer',
+          hint: 'Type your answer here...',
           controller: _textController,
-          decoration: const InputDecoration(
-            labelText: 'Your Answer',
-            border: OutlineInputBorder(),
-            hintText: 'Type your answer here...',
-          ),
           maxLines: 3,
         );
 
@@ -179,26 +178,41 @@ class _AnswerInterfaceState extends ConsumerState<AnswerInterface> {
           runSpacing: 8,
           children: options.map((option) {
             final isSelected = _selectedOption == option;
-            return ChoiceChip(
-              label: Text(option),
-              selected: isSelected,
-              onSelected: (selected) {
+            return GestureDetector(
+              onTap: () {
                 setState(() {
-                  _selectedOption = selected ? option : null;
+                  _selectedOption = isSelected ? null : option;
                 });
               },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? context.accent.withValues(alpha: 0.15)
+                      : context.surface2,
+                  borderRadius: BorderRadius.circular(JetlagRadii.sm),
+                  border: Border.all(
+                    color: isSelected ? context.accent : context.border,
+                  ),
+                ),
+                child: Text(
+                  option,
+                  style: TextStyle(
+                    color: isSelected ? context.accent : context.textPrimary,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+              ),
             );
           }).toList(),
         );
 
       case AnswerType.number:
-        return TextField(
+        return JetlagInput(
+          label: 'Your Answer',
+          hint: 'Enter a number...',
           controller: _textController,
-          decoration: const InputDecoration(
-            labelText: 'Your Answer',
-            border: OutlineInputBorder(),
-            hintText: 'Enter a number...',
-          ),
           keyboardType: TextInputType.number,
         );
 
@@ -207,7 +221,7 @@ class _AnswerInterfaceState extends ConsumerState<AnswerInterface> {
           children: [
             if (_photoFile != null) ...[
               ClipRRect(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(JetlagRadii.lg),
                 child: Image.file(
                   _photoFile!,
                   height: 200,
@@ -220,18 +234,20 @@ class _AnswerInterfaceState extends ConsumerState<AnswerInterface> {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
+                  child: JetlagButton(
+                    label: 'Take Photo',
+                    icon: Icons.camera_alt,
+                    variant: JetlagButtonVariant.secondary,
                     onPressed: () => _pickPhoto(ImageSource.camera),
-                    icon: const Icon(Icons.camera_alt),
-                    label: const Text('Take Photo'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: OutlinedButton.icon(
+                  child: JetlagButton(
+                    label: 'Gallery',
+                    icon: Icons.photo_library,
+                    variant: JetlagButtonVariant.secondary,
                     onPressed: () => _pickPhoto(ImageSource.gallery),
-                    icon: const Icon(Icons.photo_library),
-                    label: const Text('Gallery'),
                   ),
                 ),
               ],
@@ -242,32 +258,31 @@ class _AnswerInterfaceState extends ConsumerState<AnswerInterface> {
       case AnswerType.audio:
         return Column(
           children: [
-            // TODO: Implement audio recording
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: context.border),
+                borderRadius: BorderRadius.circular(JetlagRadii.lg),
               ),
-              child: const Column(
+              child: Column(
                 children: [
-                  Icon(Icons.mic, size: 48, color: Colors.grey),
-                  SizedBox(height: 8),
-                  Text('Audio recording coming soon'),
+                  Icon(Icons.mic, size: 48, color: context.textTertiary),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Audio recording coming soon',
+                    style: TextStyle(color: context.textPrimary),
+                  ),
                   Text(
                     'For now, describe what you hear in text',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(color: context.textTertiary, fontSize: 13),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 12),
-            TextField(
+            JetlagInput(
+              label: 'Describe what you hear',
               controller: _textController,
-              decoration: const InputDecoration(
-                labelText: 'Describe what you hear',
-                border: OutlineInputBorder(),
-              ),
               maxLines: 3,
             ),
           ],
@@ -281,15 +296,11 @@ class _AnswerInterfaceState extends ConsumerState<AnswerInterface> {
 
     if (!hasVetoCard) return const SizedBox.shrink();
 
-    return OutlinedButton.icon(
+    return JetlagButton(
+      label: 'Use Veto Card',
+      icon: Icons.block,
+      variant: JetlagButtonVariant.danger,
       onPressed: _isSubmitting ? null : _vetoQuestion,
-      icon: const Icon(Icons.block, color: Colors.purple),
-      label: const Text('Use Veto Card'),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.purple,
-        side: const BorderSide(color: Colors.purple),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-      ),
     );
   }
 
@@ -357,7 +368,6 @@ class _AnswerInterfaceState extends ConsumerState<AnswerInterface> {
           const SnackBar(content: Text('Answer submitted! Draw your cards.')),
         );
 
-        // Show card draw screen for the hider to draw and keep cards
         await showCardDrawScreen(
           context,
           category: question.category,
@@ -381,19 +391,21 @@ class _AnswerInterfaceState extends ConsumerState<AnswerInterface> {
   Future<void> _vetoQuestion() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Use Veto Card?'),
-        content: const Text(
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ctx.surface,
+        title: Text('Use Veto Card?', style: TextStyle(color: ctx.textPrimary)),
+        content: Text(
           'This will cancel the question. The seekers will not draw cards. You will lose your Veto card.',
+          style: TextStyle(color: ctx.textSecondary),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel', style: TextStyle(color: ctx.textSecondary)),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Use Veto'),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Use Veto', style: TextStyle(color: ctx.red)),
           ),
         ],
       ),
@@ -408,7 +420,6 @@ class _AnswerInterfaceState extends ConsumerState<AnswerInterface> {
             widget.sessionQuestion.id,
           );
 
-      // Also discard the veto card
       final cardsInHand = ref.read(handWithDetailsProvider);
       final vetoCard = cardsInHand.firstWhere((card) => card.$2.id == 'veto');
       await ref.read(cardActionsProvider).discardCard(
@@ -444,17 +455,17 @@ class _AnswerInterfaceState extends ConsumerState<AnswerInterface> {
   Color _getCategoryColor(QuestionCategory category) {
     switch (category) {
       case QuestionCategory.matching:
-        return Colors.blue;
+        return JetlagColors.matching;
       case QuestionCategory.measuring:
-        return Colors.purple;
+        return JetlagColors.measuring;
       case QuestionCategory.radar:
-        return Colors.green;
+        return JetlagColors.radar;
       case QuestionCategory.thermometer:
-        return Colors.orange;
+        return JetlagColors.thermometer;
       case QuestionCategory.tentacles:
-        return Colors.teal;
+        return JetlagColors.tentacles;
       case QuestionCategory.photo:
-        return Colors.pink;
+        return JetlagColors.photo;
     }
   }
 }

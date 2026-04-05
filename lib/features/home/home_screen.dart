@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/providers/providers.dart';
-import '../../app/theme.dart';
+import '../../design/colors.dart';
+import '../../design/theme.dart';
+import '../../design/widgets/jetlag_button.dart';
+import '../../design/widgets/jetlag_card.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -13,87 +16,117 @@ class HomeScreen extends ConsumerWidget {
     final displayName = ref.watch(displayNameProvider);
 
     return Scaffold(
+      backgroundColor: context.bg,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Spacer(),
-              // Logo/Title
-              Text(
-                'JET LAG',
-                style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 4,
-                    ),
-                textAlign: TextAlign.center,
+              const Spacer(flex: 2),
+
+              // Gradient heading
+              ShaderMask(
+                shaderCallback: (bounds) => LinearGradient(
+                  colors: [context.accent, JetlagColors.accent2],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ).createShader(bounds),
+                child: Text(
+                  'JET LAG',
+                  style: TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 6,
+                    color: Colors.white, // masked by shader
+                    height: 1.1,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
-              Text(
-                'HIDE & SEEK',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      letterSpacing: 8,
-                      color: JetLagTheme.accentOrange,
-                    ),
-                textAlign: TextAlign.center,
+              const SizedBox(height: 4),
+              ShaderMask(
+                shaderCallback: (bounds) => LinearGradient(
+                  colors: [context.accent, JetlagColors.purple],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ).createShader(bounds),
+                child: Text(
+                  'HIDE & SEEK',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 10,
+                    color: Colors.white,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
-              const SizedBox(height: 48),
+              const SizedBox(height: 40),
 
               // Welcome message
               if (displayName != null)
                 Text(
                   'Welcome back, $displayName',
-                  style: Theme.of(context).textTheme.bodyLarge,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: context.textSecondary,
+                  ),
                   textAlign: TextAlign.center,
                 ),
-              const Spacer(),
+
+              const Spacer(flex: 2),
 
               // Main buttons
-              _MainButton(
-                label: 'Create Game',
-                icon: Icons.add_circle_outline,
-                color: JetLagTheme.hiderGreen,
-                onPressed: () => context.push('/create-game'),
+              Center(
+                child: SizedBox(
+                  width: double.infinity,
+                  child: JetlagButton(
+                    label: 'Join Game',
+                    icon: Icons.group_add_outlined,
+                    variant: JetlagButtonVariant.primary,
+                    onPressed: () => context.push('/join'),
+                  ),
+                ),
               ),
-              const SizedBox(height: 16),
-              _MainButton(
-                label: 'Join Game',
-                icon: Icons.group_add_outlined,
-                color: JetLagTheme.seekerRed,
-                onPressed: () => context.push('/join'),
+              const SizedBox(height: 12),
+              Center(
+                child: SizedBox(
+                  width: double.infinity,
+                  child: JetlagButton(
+                    label: 'How to Play',
+                    icon: Icons.help_outline,
+                    variant: JetlagButtonVariant.secondary,
+                    onPressed: () => _showRules(context),
+                  ),
+                ),
               ),
               const SizedBox(height: 32),
 
-              // Secondary buttons
+              // Bottom icon row
               Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Expanded(
-                    child: TextButton.icon(
-                      onPressed: () => context.push('/auth'),
-                      icon: const Icon(Icons.person_outline),
-                      label: Text(displayName != null ? 'Account' : 'Sign In'),
-                    ),
+                  _IconBtn(
+                    icon: Icons.lightbulb_outline,
+                    label: 'Ideas',
+                    onTap: () => context.push('/ideas'),
+                    color: context.textSecondary,
                   ),
-                  Expanded(
-                    child: TextButton.icon(
-                      onPressed: () => _showRules(context),
-                      icon: const Icon(Icons.help_outline),
-                      label: const Text('Rules'),
-                    ),
+                  const SizedBox(width: 32),
+                  _IconBtn(
+                    icon: Icons.person_outline,
+                    label: displayName != null ? 'Account' : 'Sign In',
+                    onTap: () => context.push('/auth'),
+                    color: context.textSecondary,
                   ),
-                  Expanded(
-                    child: TextButton.icon(
-                      onPressed: () => context.push('/ideas'),
-                      icon: const Icon(Icons.lightbulb_outline),
-                      label: const Text('Ideas'),
-                    ),
-                  ),
-                  Expanded(
-                    child: TextButton.icon(
-                      onPressed: () => context.push('/settings'),
-                      icon: const Icon(Icons.settings_outlined),
-                      label: const Text('Settings'),
-                    ),
+                  const SizedBox(width: 32),
+                  _IconBtn(
+                    icon: Icons.settings_outlined,
+                    label: 'Settings',
+                    onTap: () => context.push('/settings'),
+                    color: context.textSecondary,
                   ),
                 ],
               ),
@@ -109,6 +142,7 @@ class HomeScreen extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: context.surface,
       builder: (context) => DraggableScrollableSheet(
         initialChildSize: 0.7,
         minChildSize: 0.5,
@@ -126,45 +160,37 @@ class HomeScreen extends ConsumerWidget {
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 24),
                   decoration: BoxDecoration(
-                    color: Colors.grey[400],
+                    color: context.border,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
               Text(
                 'How to Play',
-                style: Theme.of(context).textTheme.headlineSmall,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimary,
+                ),
               ),
               const SizedBox(height: 16),
-              _ruleSection(
-                'The Basics',
-                'One player is the Hider, the rest are Seekers. The Hider has a set amount of time to hide within a defined game area. Seekers must find the Hider before time runs out.',
-              ),
-              _ruleSection(
-                'Hiding Phase',
-                'The Hider travels to their hiding spot and establishes a 0.5 mile radius hiding zone. They cannot leave this zone once established.',
-              ),
-              _ruleSection(
-                'Seeking Phase',
-                'Seekers ask questions to narrow down the Hider\'s location. Each question lets the Hider draw cards.',
-              ),
-              _ruleSection(
-                'Questions',
-                '• Matching (Draw 3, Keep 1): Is your X the same as ours?\n'
-                    '• Measuring (Draw 3, Keep 1): Are you closer to X than us?\n'
-                    '• Radar (Draw 2, Keep 1): Within X distance of us?\n'
-                    '• Thermometer (Draw 2, Keep 1): Warmer or colder?\n'
-                    '• Tentacles (Draw 4, Keep 2): Which X near us is closest to you?\n'
-                    '• Photo (Draw 1): Send a picture',
-              ),
-              _ruleSection(
-                'Cards',
-                'The Hider draws cards when questions are asked. Cards can add bonus time, grant powers, or be curses that restrict movement.',
-              ),
-              _ruleSection(
-                'Winning',
-                'Seekers win by finding the Hider within the time limit. The Hider wins by remaining hidden until time expires.',
-              ),
+              _ruleSection(context, 'The Basics',
+                'One player is the Hider, the rest are Seekers. The Hider has a set amount of time to hide within a defined game area. Seekers must find the Hider before time runs out.'),
+              _ruleSection(context, 'Hiding Phase',
+                'The Hider travels to their hiding spot and establishes a 0.5 mile radius hiding zone. They cannot leave this zone once established.'),
+              _ruleSection(context, 'Seeking Phase',
+                'Seekers ask questions to narrow down the Hider\'s location. Each question lets the Hider draw cards.'),
+              _ruleSection(context, 'Questions',
+                '- Matching (Draw 3, Keep 1): Is your X the same as ours?\n'
+                '- Measuring (Draw 3, Keep 1): Are you closer to X than us?\n'
+                '- Radar (Draw 2, Keep 1): Within X distance of us?\n'
+                '- Thermometer (Draw 2, Keep 1): Warmer or colder?\n'
+                '- Tentacles (Draw 4, Keep 2): Which X near us is closest to you?\n'
+                '- Photo (Draw 1): Send a picture'),
+              _ruleSection(context, 'Cards',
+                'The Hider draws cards when questions are asked. Cards can add bonus time, grant powers, or be curses that restrict movement.'),
+              _ruleSection(context, 'Winning',
+                'Seekers win by finding the Hider within the time limit. The Hider wins by remaining hidden until time expires.'),
             ],
           ),
         ),
@@ -172,7 +198,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _ruleSection(String title, String content) {
+  Widget _ruleSection(BuildContext context, String title, String content) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
@@ -180,54 +206,54 @@ class HomeScreen extends ConsumerWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
               fontSize: 16,
+              color: context.textPrimary,
             ),
           ),
           const SizedBox(height: 4),
-          Text(content),
+          Text(
+            content,
+            style: TextStyle(
+              fontSize: 14,
+              color: context.textSecondary,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _MainButton extends StatelessWidget {
-  final String label;
+class _IconBtn extends StatelessWidget {
   final IconData icon;
+  final String label;
+  final VoidCallback onTap;
   final Color color;
-  final VoidCallback onPressed;
 
-  const _MainButton({
-    required this.label,
+  const _IconBtn({
     required this.icon,
+    required this.label,
+    required this.onTap,
     required this.color,
-    required this.onPressed,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 28),
-          const SizedBox(width: 12),
+          Icon(icon, size: 22, color: color),
+          const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+            style: TextStyle(
+              fontSize: 11,
+              color: color,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],

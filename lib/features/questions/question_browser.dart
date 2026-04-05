@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/models.dart';
 import '../../core/providers/providers.dart';
+import '../../design/colors.dart';
+import '../../design/theme.dart';
+import '../../design/widgets/jetlag_badge.dart';
+import '../../design/widgets/jetlag_card.dart';
 import 'question_detail.dart';
 
 class QuestionBrowser extends ConsumerStatefulWidget {
@@ -43,21 +47,24 @@ class _QuestionBrowserState extends ConsumerState<QuestionBrowser>
         // Test mode toggle
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          color: testMode ? Colors.orange.shade100 : null,
+          color: testMode ? context.orange.withValues(alpha: 0.12) : null,
           child: Row(
             children: [
               Icon(
                 testMode ? Icons.science : Icons.science_outlined,
-                color: testMode ? Colors.orange : Colors.grey,
+                color: testMode ? context.orange : context.textTertiary,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Test Mode',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimary,
+                      ),
                     ),
                     Text(
                       testMode
@@ -65,7 +72,7 @@ class _QuestionBrowserState extends ConsumerState<QuestionBrowser>
                           : 'Try questions hypothetically',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey[600],
+                        color: context.textTertiary,
                       ),
                     ),
                   ],
@@ -76,7 +83,7 @@ class _QuestionBrowserState extends ConsumerState<QuestionBrowser>
                 onChanged: (value) {
                   ref.read(testModeProvider.notifier).state = value;
                 },
-                activeColor: Colors.orange,
+                activeColor: context.orange,
               ),
             ],
           ),
@@ -86,6 +93,9 @@ class _QuestionBrowserState extends ConsumerState<QuestionBrowser>
         TabBar(
           controller: _tabController,
           isScrollable: true,
+          labelColor: context.accent,
+          unselectedLabelColor: context.textTertiary,
+          indicatorColor: context.accent,
           tabs: QuestionCategory.values.map((category) {
             final cooldownRemaining =
                 ref.watch(categoryRemainingCooldownProvider(category));
@@ -98,11 +108,7 @@ class _QuestionBrowserState extends ConsumerState<QuestionBrowser>
                   Text(category.displayName),
                   if (isOnCooldown && !testMode) ...[
                     const SizedBox(width: 4),
-                    Icon(
-                      Icons.timer,
-                      size: 14,
-                      color: Colors.orange,
-                    ),
+                    Icon(Icons.timer, size: 14, color: context.orange),
                   ],
                 ],
               ),
@@ -137,37 +143,24 @@ class _QuestionBrowserState extends ConsumerState<QuestionBrowser>
 
     return Container(
       padding: const EdgeInsets.all(12),
-      color: _getCategoryColor(category).withOpacity(0.1),
+      color: _getCategoryColor(category).withValues(alpha: 0.08),
       child: Row(
         children: [
-          // Card reward
           _InfoChip(
             icon: Icons.style,
             label: category.cardRewardText,
           ),
           const SizedBox(width: 12),
-          // Response time
           _InfoChip(
             icon: Icons.timer,
             label: '${category.defaultResponseTimeMinutes} min',
           ),
           const Spacer(),
-          // Cooldown
           if (cooldownRemaining != null && !testMode)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.orange,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                'Cooldown: ${_formatDuration(cooldownRemaining)}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+            JetlagBadge(
+              label: 'Cooldown: ${_formatDuration(cooldownRemaining)}',
+              color: JetlagBadgeColor.orange,
+              showPulse: true,
             ),
         ],
       ),
@@ -177,17 +170,17 @@ class _QuestionBrowserState extends ConsumerState<QuestionBrowser>
   Color _getCategoryColor(QuestionCategory category) {
     switch (category) {
       case QuestionCategory.matching:
-        return Colors.blue;
+        return JetlagColors.matching;
       case QuestionCategory.measuring:
-        return Colors.purple;
+        return JetlagColors.measuring;
       case QuestionCategory.radar:
-        return Colors.green;
+        return JetlagColors.radar;
       case QuestionCategory.thermometer:
-        return Colors.orange;
+        return JetlagColors.thermometer;
       case QuestionCategory.tentacles:
-        return Colors.teal;
+        return JetlagColors.tentacles;
       case QuestionCategory.photo:
-        return Colors.pink;
+        return JetlagColors.photo;
     }
   }
 
@@ -209,13 +202,13 @@ class _InfoChip extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: Colors.grey[600]),
+        Icon(icon, size: 16, color: context.textTertiary),
         const SizedBox(width: 4),
         Text(
           label,
           style: TextStyle(
             fontSize: 12,
-            color: Colors.grey[600],
+            color: context.textTertiary,
           ),
         ),
       ],
@@ -266,42 +259,38 @@ class _QuestionCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: JetlagCard(
         onTap: () => _showQuestionDetail(context, ref),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      question.text,
-                      style: const TextStyle(fontSize: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    question.text,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: context.textPrimary,
                     ),
                   ),
-                  const Icon(Icons.chevron_right),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  _AnswerTypeChip(answerType: question.answerType),
-                  const Spacer(),
-                  if (question.requiresLocation)
-                    const Icon(
-                      Icons.location_on,
-                      size: 16,
-                      color: Colors.grey,
-                    ),
-                ],
-              ),
-            ],
-          ),
+                ),
+                Icon(Icons.chevron_right, color: context.textTertiary, size: 20),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _AnswerTypeChip(answerType: question.answerType),
+                const Spacer(),
+                if (question.requiresLocation)
+                  Icon(Icons.location_on, size: 16, color: context.textTertiary),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -311,6 +300,7 @@ class _QuestionCard extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: context.surface,
       builder: (context) => QuestionDetail(
         question: question,
         canAsk: canAsk,
@@ -339,17 +329,17 @@ class _AnswerTypeChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(4),
+        color: context.surface2,
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14),
+          Icon(icon, size: 14, color: context.textSecondary),
           const SizedBox(width: 4),
           Text(
             label,
-            style: const TextStyle(fontSize: 12),
+            style: TextStyle(fontSize: 12, color: context.textSecondary),
           ),
         ],
       ),

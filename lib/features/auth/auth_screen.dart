@@ -3,6 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/providers/providers.dart';
+import '../../design/colors.dart';
+import '../../design/theme.dart';
+import '../../design/widgets/jetlag_button.dart';
+import '../../design/widgets/jetlag_card.dart';
+import '../../design/widgets/jetlag_input.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -44,12 +49,19 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     final displayName = ref.watch(displayNameProvider);
 
     return Scaffold(
+      backgroundColor: context.bg,
       appBar: AppBar(
-        title: const Text('Account'),
+        backgroundColor: context.bg,
+        foregroundColor: context.textPrimary,
+        title: Text(
+          'Account',
+          style: TextStyle(color: context.textPrimary, fontWeight: FontWeight.w700),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back, color: context.textPrimary),
           onPressed: () => context.pop(),
         ),
+        elevation: 0,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -64,35 +76,38 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                const CircleAvatar(
-                  radius: 40,
-                  child: Icon(Icons.person, size: 40),
+        JetlagCard(
+          child: Column(
+            children: [
+              CircleAvatar(
+                radius: 40,
+                backgroundColor: context.accent.withValues(alpha: 0.15),
+                child: Icon(Icons.person, size: 40, color: context.accent),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                displayName ?? 'Player',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimary,
                 ),
-                const SizedBox(height: 16),
+              ),
+              if (user.email != null)
                 Text(
-                  displayName ?? 'Player',
-                  style: Theme.of(context).textTheme.headlineSmall,
+                  user.email!,
+                  style: TextStyle(fontSize: 13, color: context.textSecondary),
                 ),
-                if (user.email != null)
-                  Text(
-                    user.email!,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-              ],
-            ),
+            ],
           ),
         ),
         const SizedBox(height: 24),
         _buildDisplayNameField(),
         const SizedBox(height: 24),
-        OutlinedButton(
+        JetlagButton(
+          label: 'Sign Out',
+          variant: JetlagButtonVariant.secondary,
           onPressed: _signOut,
-          child: const Text('Sign Out'),
         ),
       ],
     );
@@ -103,16 +118,23 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Display Name',
-          style: Theme.of(context).textTheme.titleMedium,
+          'DISPLAY NAME',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: context.textSecondary,
+            letterSpacing: 0.5,
+          ),
         ),
         const SizedBox(height: 8),
         TextFormField(
           controller: _displayNameController,
+          style: TextStyle(color: context.textPrimary, fontSize: 14),
           decoration: InputDecoration(
             hintText: 'Enter your display name',
+            hintStyle: TextStyle(color: context.textTertiary),
             suffixIcon: IconButton(
-              icon: const Icon(Icons.check),
+              icon: Icon(Icons.check, color: context.accent),
               onPressed: _saveDisplayName,
             ),
           ),
@@ -128,19 +150,27 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Toggle Sign In / Sign Up
-          SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(value: false, label: Text('Sign In')),
-              ButtonSegment(value: true, label: Text('Sign Up')),
-            ],
-            selected: {_isSignUp},
-            onSelectionChanged: (selection) {
-              setState(() {
-                _isSignUp = selection.first;
-                _errorMessage = null;
-              });
-            },
+          // Toggle Sign In / Sign Up - pill selector style
+          Container(
+            decoration: BoxDecoration(
+              color: context.surface2,
+              borderRadius: BorderRadius.circular(JetlagRadii.sm),
+            ),
+            padding: const EdgeInsets.all(3),
+            child: Row(
+              children: [
+                _AuthPill(
+                  label: 'Sign In',
+                  isActive: !_isSignUp,
+                  onTap: () => setState(() { _isSignUp = false; _errorMessage = null; }),
+                ),
+                _AuthPill(
+                  label: 'Sign Up',
+                  isActive: _isSignUp,
+                  onTap: () => setState(() { _isSignUp = true; _errorMessage = null; }),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 24),
 
@@ -148,9 +178,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           if (_isSignUp) ...[
             TextFormField(
               controller: _displayNameController,
-              decoration: const InputDecoration(
+              style: TextStyle(color: context.textPrimary, fontSize: 14),
+              decoration: InputDecoration(
                 labelText: 'Display Name',
-                prefixIcon: Icon(Icons.person_outline),
+                labelStyle: TextStyle(color: context.textSecondary, fontSize: 12),
+                prefixIcon: Icon(Icons.person_outline, color: context.textTertiary),
               ),
               validator: (value) {
                 if (_isSignUp && (value == null || value.isEmpty)) {
@@ -165,9 +197,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           // Email
           TextFormField(
             controller: _emailController,
-            decoration: const InputDecoration(
+            style: TextStyle(color: context.textPrimary, fontSize: 14),
+            decoration: InputDecoration(
               labelText: 'Email',
-              prefixIcon: Icon(Icons.email_outlined),
+              labelStyle: TextStyle(color: context.textSecondary, fontSize: 12),
+              prefixIcon: Icon(Icons.email_outlined, color: context.textTertiary),
             ),
             keyboardType: TextInputType.emailAddress,
             autocorrect: false,
@@ -186,9 +220,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           // Password
           TextFormField(
             controller: _passwordController,
-            decoration: const InputDecoration(
+            style: TextStyle(color: context.textPrimary, fontSize: 14),
+            decoration: InputDecoration(
               labelText: 'Password',
-              prefixIcon: Icon(Icons.lock_outline),
+              labelStyle: TextStyle(color: context.textSecondary, fontSize: 12),
+              prefixIcon: Icon(Icons.lock_outline, color: context.textTertiary),
             ),
             obscureText: true,
             validator: (value) {
@@ -209,38 +245,42 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               padding: const EdgeInsets.only(bottom: 16),
               child: Text(
                 _errorMessage!,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.error,
-                ),
+                style: TextStyle(color: context.red, fontSize: 13),
                 textAlign: TextAlign.center,
               ),
             ),
 
           // Submit Button
-          ElevatedButton(
+          JetlagButton(
+            label: _isSignUp ? 'Create Account' : 'Sign In',
+            variant: JetlagButtonVariant.primary,
+            isLoading: _isLoading,
             onPressed: _isLoading ? null : _submit,
-            child: _isLoading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(_isSignUp ? 'Create Account' : 'Sign In'),
           ),
           const SizedBox(height: 16),
 
           // Play Anonymously
-          TextButton(
+          JetlagButton(
+            label: 'Play without account',
+            variant: JetlagButtonVariant.secondary,
             onPressed: _playAnonymously,
-            child: const Text('Play without account'),
           ),
           const SizedBox(height: 24),
 
           // Forgot Password
           if (!_isSignUp)
-            TextButton(
-              onPressed: _forgotPassword,
-              child: const Text('Forgot password?'),
+            Center(
+              child: GestureDetector(
+                onTap: _forgotPassword,
+                child: Text(
+                  'Forgot password?',
+                  style: TextStyle(
+                    color: context.accent,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
             ),
         ],
       ),
@@ -288,7 +328,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   Future<void> _playAnonymously() async {
-    // Just save display name and go back
     if (_displayNameController.text.isNotEmpty) {
       await _saveDisplayName();
     }
@@ -344,5 +383,43 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         );
       }
     }
+  }
+}
+
+class _AuthPill extends StatelessWidget {
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _AuthPill({
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isActive ? context.accent : Colors.transparent,
+            borderRadius: BorderRadius.circular(JetlagRadii.sm - 2),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: isActive ? Colors.white : context.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
