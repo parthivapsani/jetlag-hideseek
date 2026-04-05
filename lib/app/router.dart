@@ -11,6 +11,7 @@ import '../features/game/seeker_view.dart';
 import '../features/game/hider_view.dart';
 import '../features/game/spectator_view.dart';
 import '../features/game/game_over_screen.dart';
+import '../features/game/round_summary_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/questions/question_drafting_screen.dart';
 import '../features/feature_requests/feature_requests_screen.dart';
@@ -74,6 +75,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/game/:sessionId/spectator',
         name: 'spectator',
         builder: (context, state) => SpectatorView(
+          sessionId: state.pathParameters['sessionId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/game/:sessionId/round-summary',
+        name: 'round-summary',
+        builder: (context, state) => RoundSummaryScreen(
           sessionId: state.pathParameters['sessionId']!,
         ),
       ),
