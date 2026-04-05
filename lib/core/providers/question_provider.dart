@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/models.dart';
 import '../services/services.dart';
+import 'game_event_provider.dart';
 import 'game_provider.dart';
 
 // ============ Question Data ============
@@ -162,7 +163,7 @@ class QuestionActions {
       }
     }
 
-    return await _service.askQuestion(
+    final result = await _service.askQuestion(
       sessionId: sessionId,
       questionId: questionId,
       category: category,
@@ -170,6 +171,11 @@ class QuestionActions {
       responseTimeMinutes: responseTimeMinutes,
       testMode: testMode,
     );
+    _ref.read(eventLoggerProvider).log(
+      eventType: 'question_asked',
+      payload: {'questionId': questionId, 'category': category.name, 'sessionQuestionId': result.id},
+    );
+    return result;
   }
 
   Future<void> answerQuestion(
@@ -183,6 +189,10 @@ class QuestionActions {
       answerText: answerText,
       answerPhotoUrl: answerPhotoUrl,
       answerAudioUrl: answerAudioUrl,
+    );
+    _ref.read(eventLoggerProvider).log(
+      eventType: 'question_answered',
+      payload: {'sessionQuestionId': sessionQuestionId, 'answerText': answerText},
     );
   }
 

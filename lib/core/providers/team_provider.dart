@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/models.dart';
 import '../services/services.dart';
+import 'game_event_provider.dart';
 import 'game_provider.dart';
 
 // ============ Teams ============
@@ -75,6 +76,10 @@ class TeamActions {
 
   Future<void> switchTeam(String participantId, String teamId) async {
     await _service.updateParticipantTeam(participantId, teamId);
+    _ref.read(eventLoggerProvider).log(
+      eventType: 'player_joined',
+      payload: {'participantId': participantId, 'teamId': teamId},
+    );
   }
 }
 

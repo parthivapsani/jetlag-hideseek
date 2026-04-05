@@ -566,6 +566,40 @@ class SupabaseService {
     }).eq('id', id);
   }
 
+  // ============ Game Events ============
+
+  Future<void> logEvent({
+    required String sessionId,
+    String? roundId,
+    required String eventType,
+    Map<String, dynamic> payload = const {},
+  }) async {
+    await _client.from('game_events').insert({
+      'session_id': sessionId,
+      'round_id': roundId,
+      'event_type': eventType,
+      'payload': payload,
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getSessionEvents(String sessionId) async {
+    final response = await _client
+        .from('game_events')
+        .select()
+        .eq('session_id', sessionId)
+        .order('created_at');
+    return (response as List).map((e) => _gameEventFromDb(e)).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> getRoundEvents(String roundId) async {
+    final response = await _client
+        .from('game_events')
+        .select()
+        .eq('round_id', roundId)
+        .order('created_at');
+    return (response as List).map((e) => _gameEventFromDb(e)).toList();
+  }
+
   // ============ Helpers ============
 
   String _generateRoomCode() {
@@ -765,6 +799,17 @@ class SupabaseService {
       'placedAt': data['placed_at'],
       'triggeredAt': data['triggered_at'],
       'triggeredByParticipantId': data['triggered_by_participant_id'],
+    };
+  }
+
+  Map<String, dynamic> _gameEventFromDb(Map<String, dynamic> data) {
+    return {
+      'id': data['id'],
+      'sessionId': data['session_id'],
+      'roundId': data['round_id'],
+      'eventType': data['event_type'],
+      'payload': data['payload'] ?? {},
+      'createdAt': data['created_at'],
     };
   }
 }

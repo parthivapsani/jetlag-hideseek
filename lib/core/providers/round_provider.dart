@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/round.dart';
 import '../services/supabase_init.dart';
+import 'game_event_provider.dart';
 import 'game_provider.dart';
 
 /// All rounds for the current session.
@@ -45,12 +46,18 @@ class RoundActions {
   }) async {
     final service = ref.read(supabaseServiceProvider);
     if (service == null) return null;
-    return service.createRound(
+    final round = await service.createRound(
       sessionId: sessionId,
       roundNumber: roundNumber,
       hiderTeamId: hiderTeamId,
       seekerTeamId: seekerTeamId,
     );
+    ref.read(eventLoggerProvider).log(
+      eventType: 'round_started',
+      roundId: round.id,
+      payload: {'roundNumber': roundNumber, 'hiderTeamId': hiderTeamId, 'seekerTeamId': seekerTeamId},
+    );
+    return round;
   }
 
   Future<void> startHiding(String roundId) async {
@@ -58,6 +65,11 @@ class RoundActions {
     if (service == null) return;
     await service.updateRoundStatus(roundId, 'hiding',
         hidingStartedAt: DateTime.now());
+    ref.read(eventLoggerProvider).log(
+      eventType: 'phase_change',
+      roundId: roundId,
+      payload: {'phase': 'hiding'},
+    );
   }
 
   Future<void> startSeeking(String roundId) async {
@@ -65,12 +77,22 @@ class RoundActions {
     if (service == null) return;
     await service.updateRoundStatus(roundId, 'seeking',
         seekingStartedAt: DateTime.now());
+    ref.read(eventLoggerProvider).log(
+      eventType: 'phase_change',
+      roundId: roundId,
+      payload: {'phase': 'seeking'},
+    );
   }
 
   Future<void> enterEndgame(String roundId) async {
     final service = ref.read(supabaseServiceProvider);
     if (service == null) return;
     await service.updateRoundStatus(roundId, 'endgame');
+    ref.read(eventLoggerProvider).log(
+      eventType: 'phase_change',
+      roundId: roundId,
+      payload: {'phase': 'endgame'},
+    );
   }
 
   Future<void> markFound(String roundId, int hideDurationSeconds) async {
@@ -81,6 +103,11 @@ class RoundActions {
       'found',
       foundAt: DateTime.now(),
       hideDurationSeconds: hideDurationSeconds,
+    );
+    ref.read(eventLoggerProvider).log(
+      eventType: 'round_ended',
+      roundId: roundId,
+      payload: {'hideDurationSeconds': hideDurationSeconds},
     );
   }
 

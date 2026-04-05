@@ -6,3 +6,4 @@ export 'station.dart';
 export 'team.dart';
 export 'round.dart';
 export 'feature_request.dart';
+export 'game_event.dart';

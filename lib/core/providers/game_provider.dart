@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../services/services.dart';
 // supabaseClientProvider and supabaseServiceProvider come from services.dart → supabase_init.dart
 import 'auth_provider.dart';
+import 'game_event_provider.dart';
 
 // Service providers
 final realtimeServiceProvider = Provider<RealtimeService?>((ref) {
@@ -211,6 +212,10 @@ class GameActions {
       timerPausedAt: DateTime.now(),
       pausedTimeRemainingSeconds: session.remainingHidingTime?.inSeconds,
     );
+    _ref.read(eventLoggerProvider).log(
+      eventType: 'timer_pause',
+      payload: {'remainingSeconds': session.remainingHidingTime?.inSeconds},
+    );
   }
 
   Future<void> resumeGame() async {
@@ -230,12 +235,20 @@ class GameActions {
           : SessionStatus.hiding,
       hidingStartedAt: newHidingStartedAt,
     );
+    _ref.read(eventLoggerProvider).log(
+      eventType: 'timer_resume',
+      payload: {'remainingSeconds': remainingSeconds},
+    );
   }
 
   Future<void> endGame({String? winnerId}) async {
     final sessionId = _ref.read(currentSessionIdProvider);
     if (sessionId == null) return;
     await _service.endSession(sessionId, winnerId: winnerId);
+    _ref.read(eventLoggerProvider).log(
+      eventType: 'game_ended',
+      payload: {'winnerId': winnerId},
+    );
   }
 
   Future<void> leaveSession() async {

@@ -7,3 +7,4 @@ export 'game_state_provider.dart';
 export 'team_provider.dart';
 export 'feature_request_provider.dart';
 export 'round_provider.dart';
+export 'game_event_provider.dart';

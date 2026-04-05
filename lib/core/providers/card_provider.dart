@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/models.dart';
 import '../services/services.dart';
+import 'game_event_provider.dart';
 import 'game_provider.dart';
 
 // ============ Card Definitions ============
@@ -210,6 +211,10 @@ class CardActions {
   Future<void> playCard(String hiderCardId, String cardId) async {
     await _service.playCard(hiderCardId);
     _ref.read(deckStateProvider.notifier).discardCard(cardId);
+    _ref.read(eventLoggerProvider).log(
+      eventType: 'card_played',
+      payload: {'hiderCardId': hiderCardId, 'cardId': cardId},
+    );
   }
 
   Future<void> discardCard(String hiderCardId, String cardId) async {
@@ -227,7 +232,7 @@ class CardActions {
     final sessionId = _ref.read(currentSessionIdProvider);
     if (sessionId == null) throw Exception('No active session');
 
-    return await _service.activateCurse(
+    final curse = await _service.activateCurse(
       sessionId: sessionId,
       cardId: cardId,
       curseType: curseType,
@@ -235,6 +240,11 @@ class CardActions {
       condition: condition,
       isBlocking: isBlocking,
     );
+    _ref.read(eventLoggerProvider).log(
+      eventType: 'curse_activated',
+      payload: {'cardId': cardId, 'curseType': curseType.name, 'durationMinutes': durationMinutes},
+    );
+    return curse;
   }
 
   Future<void> removeCurse(String curseId) async {
@@ -285,7 +295,12 @@ class CardActions {
   Future<HiderCard> keepCard(String cardId) async {
     final sessionId = _ref.read(currentSessionIdProvider);
     if (sessionId == null) throw Exception('No active session');
-    return _service.drawCard(sessionId: sessionId, cardId: cardId);
+    final card = await _service.drawCard(sessionId: sessionId, cardId: cardId);
+    _ref.read(eventLoggerProvider).log(
+      eventType: 'card_drawn',
+      payload: {'cardId': cardId},
+    );
+    return card;
   }
 
   /// Discard a drawn card (don't keep it, return to discard pile).
