@@ -132,18 +132,104 @@ class _SummaryContent extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        // ===== Timeline =====
-        _SectionLabel(label: 'TIMELINE'),
-        const SizedBox(height: 12),
-        _TimelineSection(events: events, teams: teams),
+        // ===== Round Overview (always available from round data) =====
+        if (completedRounds.isNotEmpty) ...[
+          _SectionLabel(label: 'GAME OVERVIEW'),
+          const SizedBox(height: 12),
+          ...completedRounds.map((round) {
+            final hiderTeam = teams
+                .where((t) => t.id == round.hiderTeamId)
+                .firstOrNull;
+            final seekerTeam = teams
+                .where((t) => t.id == round.seekerTeamId)
+                .firstOrNull;
+            final duration = round.hideDuration ?? Duration.zero;
 
-        const SizedBox(height: 28),
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: JetlagCard(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: context.accent.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'R${round.roundNumber}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: context.accent,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${hiderTeam?.name ?? "?"} hid for ${_formatDuration(duration)}',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: context.textPrimary,
+                                ),
+                              ),
+                              Text(
+                                '${seekerTeam?.name ?? "?"} seeking',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: context.textTertiary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        JetlagTimer(
+                          duration: duration,
+                          fontSize: 16,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: 28),
+        ],
+
+        // ===== Timeline (from events) =====
+        if (events.isNotEmpty) ...[
+          _SectionLabel(label: 'EVENT TIMELINE'),
+          const SizedBox(height: 12),
+          _TimelineSection(events: events, teams: teams),
+          const SizedBox(height: 28),
+        ],
 
         // ===== Question Log =====
-        _SectionLabel(label: 'QUESTIONS'),
-        const SizedBox(height: 12),
-        if (questionEvents.isEmpty)
-          _EmptyCard(message: 'No questions asked')
+        if (questionEvents.isNotEmpty) ...[
+          _SectionLabel(label: 'QUESTIONS'),
+          const SizedBox(height: 12),
+        ],
+        if (questionEvents.isEmpty && events.isNotEmpty)
+          ...[
+            _SectionLabel(label: 'QUESTIONS'),
+            const SizedBox(height: 12),
+            _EmptyCard(message: 'No questions in event log'),
+            const SizedBox(height: 28),
+          ]
+        else if (questionEvents.isEmpty && events.isEmpty)
+          const SizedBox.shrink()
         else
           ...questionEvents.map((q) {
             final answer = answerEvents.where((a) =>
@@ -233,28 +319,29 @@ class _SummaryContent extends StatelessWidget {
             );
           }),
 
-        const SizedBox(height: 28),
-
-        // ===== Card History =====
-        _SectionLabel(label: 'CARDS'),
-        const SizedBox(height: 12),
-        JetlagCard(
-          child: Column(
-            children: [
-              _StatRow(
-                  label: 'Cards Drawn',
-                  value: '${cardDrawnEvents.length}',
-                  icon: Icons.style),
-              if (cardPlayedEvents.isNotEmpty) ...[
-                Divider(color: context.borderSubtle, height: 20),
+        // ===== Card History (only show if events exist) =====
+        if (cardDrawnEvents.isNotEmpty || cardPlayedEvents.isNotEmpty) ...[
+          const SizedBox(height: 28),
+          _SectionLabel(label: 'CARDS'),
+          const SizedBox(height: 12),
+          JetlagCard(
+            child: Column(
+              children: [
                 _StatRow(
-                    label: 'Cards Played',
-                    value: '${cardPlayedEvents.length}',
-                    icon: Icons.play_arrow),
+                    label: 'Cards Drawn',
+                    value: '${cardDrawnEvents.length}',
+                    icon: Icons.style),
+                if (cardPlayedEvents.isNotEmpty) ...[
+                  Divider(color: context.borderSubtle, height: 20),
+                  _StatRow(
+                      label: 'Cards Played',
+                      value: '${cardPlayedEvents.length}',
+                      icon: Icons.play_arrow),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
+        ],
 
         const SizedBox(height: 28),
 
