@@ -390,6 +390,9 @@ class RealtimeService {
       'pausedTimeRemainingSeconds': data['paused_time_remaining_seconds'],
       'endedAt': data['ended_at'],
       'winnerId': data['winner_id'],
+      'winningTeamId': data['winning_team_id'],
+      'winnerOverride': data['winner_override'] ?? false,
+      'totalRounds': data['total_rounds'] ?? 2,
       'createdBy': data['created_by'],
       'createdAt': data['created_at'],
     };

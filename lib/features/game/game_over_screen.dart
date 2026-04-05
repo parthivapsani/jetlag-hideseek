@@ -15,6 +15,14 @@ class GameOverScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Ensure session ID is set so dependent providers can load data
+    final currentId = ref.read(currentSessionIdProvider);
+    if (currentId != sessionId) {
+      Future.microtask(() {
+        ref.read(currentSessionIdProvider.notifier).state = sessionId;
+      });
+    }
+
     final sessionAsync = ref.watch(currentSessionProvider);
     final roundsAsync = ref.watch(roundsProvider);
     final teamsAsync = ref.watch(teamsProvider);

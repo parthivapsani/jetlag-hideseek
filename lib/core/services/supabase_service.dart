@@ -609,7 +609,22 @@ class SupabaseService {
   List<PolygonData> _parsePolygons(dynamic data) {
     if (data == null) return [];
     if (data is List) {
-      return data.map((p) => PolygonData.fromJson(p as Map<String, dynamic>)).toList();
+      return data.map((p) {
+        final map = p as Map<String, dynamic>;
+        // Normalize point keys: accept both lat/lng and latitude/longitude
+        if (map['points'] is List) {
+          map['points'] = (map['points'] as List).map((pt) {
+            if (pt is Map<String, dynamic>) {
+              return {
+                'latitude': pt['latitude'] ?? pt['lat'],
+                'longitude': pt['longitude'] ?? pt['lng'],
+              };
+            }
+            return pt;
+          }).toList();
+        }
+        return PolygonData.fromJson(map);
+      }).toList();
     }
     return [];
   }

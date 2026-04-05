@@ -38,14 +38,16 @@ class _GameMapState extends ConsumerState<GameMap> {
 
     return gameAreaAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => Center(child: Text('Error: $error')),
+      error: (error, _) => Center(child: Text('Map error: $error')),
       data: (areaAsync) {
-        return areaAsync?.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => Center(child: Text('Error: $error')),
-              data: (gameArea) => _buildMap(gameArea),
-            ) ??
-            const Center(child: Text('No game area'));
+        if (areaAsync == null) {
+          return const Center(child: Text('No game area'));
+        }
+        return areaAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => Center(child: Text('Map error: $error')),
+          data: (gameArea) => _buildMap(gameArea),
+        );
       },
     );
   }
