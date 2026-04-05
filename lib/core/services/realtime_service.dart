@@ -241,6 +241,46 @@ class RealtimeService {
     return controller.stream;
   }
 
+  // ============ Rounds Realtime ============
+
+  Stream<List<Round>> subscribeToRounds(String sessionId) {
+    final key = 'rounds:$sessionId';
+    if (_controllers.containsKey(key)) {
+      return _controllers[key]!.stream as Stream<List<Round>>;
+    }
+
+    final controller = StreamController<List<Round>>.broadcast();
+    _controllers[key] = controller;
+
+    final channel = _client.channel('rounds:$sessionId');
+    channel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'rounds',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'session_id',
+            value: sessionId,
+          ),
+          callback: (payload) async {
+            final response = await _client
+                .from('rounds')
+                .select()
+                .eq('session_id', sessionId)
+                .order('round_number');
+            final rounds = (response as List)
+                .map((e) => Round.fromJson(_roundFromDb(e)))
+                .toList();
+            controller.add(rounds);
+          },
+        )
+        .subscribe();
+
+    _channels[key] = channel;
+    return controller.stream;
+  }
+
   // ============ Presence ============
 
   RealtimeChannel joinPresence(
@@ -412,6 +452,24 @@ class RealtimeService {
       'expiresAt': data['expires_at'],
       'isBlocking': data['is_blocking'],
       'condition': data['condition'],
+    };
+  }
+
+  Map<String, dynamic> _roundFromDb(Map<String, dynamic> data) {
+    return {
+      'id': data['id'],
+      'sessionId': data['session_id'],
+      'roundNumber': data['round_number'],
+      'hiderTeamId': data['hider_team_id'],
+      'seekerTeamId': data['seeker_team_id'],
+      'status': data['status'],
+      'hidingStartedAt': data['hiding_started_at'],
+      'seekingStartedAt': data['seeking_started_at'],
+      'timerPausedAt': data['timer_paused_at'],
+      'pausedTimeRemainingSeconds': data['paused_time_remaining_seconds'],
+      'foundAt': data['found_at'],
+      'hideDurationSeconds': data['hide_duration_seconds'],
+      'createdAt': data['created_at'],
     };
   }
 }
