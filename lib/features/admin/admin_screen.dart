@@ -192,51 +192,68 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Always show "Draw New Area" button
+                Center(
+                  child: JetlagButton(
+                    label: 'New Game Area + Game',
+                    icon: Icons.map_outlined,
+                    variant: JetlagButtonVariant.primary,
+                    onPressed: () => context.push('/create-game'),
+                  ),
+                ),
+
+                // If areas exist, also show quick create
                 gameAreas.when(
-                  loading: () => const _LoadingWidget(),
-                  error: (e, _) => _ErrorWidget(error: e.toString()),
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
                   data: (areas) {
                     if (areas.isEmpty) {
-                      return Text(
-                        'No game areas defined. Create one from the main app first.',
-                        style: Theme.of(context).textTheme.bodyLarge,
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          'Draw a game area on the map to get started',
+                          style: TextStyle(color: context.textSecondary, fontSize: 13),
+                          textAlign: TextAlign.center,
+                        ),
                       );
                     }
                     return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        const SizedBox(height: 16),
+                        Divider(color: context.border),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Or use an existing area:',
+                          style: TextStyle(color: context.textSecondary, fontSize: 13),
+                        ),
+                        const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
                           value: _selectedAreaId ?? areas.first.id,
-                          decoration: const InputDecoration(
-                            labelText: 'Game Area',
-                          ),
-                          items: areas
-                              .map((a) => DropdownMenuItem(
-                                    value: a.id,
-                                    child: Text(a.name),
-                                  ))
-                              .toList(),
+                          decoration: const InputDecoration(labelText: 'Game Area'),
+                          items: areas.map((a) => DropdownMenuItem(
+                            value: a.id,
+                            child: Text(a.name),
+                          )).toList(),
                           onChanged: (v) => setState(() => _selectedAreaId = v),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         Center(
                           child: JetlagButton(
                             label: 'Create Game',
                             icon: Icons.add,
                             isLoading: _isCreating,
-                            onPressed: _isCreating
-                                ? null
-                                : () {
-                                    final areaId = _selectedAreaId ??
-                                        (areas.isNotEmpty ? areas.first.id : null);
-                                    if (areaId != null) _createGame(areaId);
-                                  },
+                            onPressed: _isCreating ? null : () {
+                              final areaId = _selectedAreaId ?? areas.first.id;
+                              _createGame(areaId);
+                            },
                           ),
                         ),
                       ],
                     );
                   },
                 ),
+
+                // Show created game link
                 if (_createdRoomCode != null) ...[
                   const SizedBox(height: 16),
                   JetlagCard(
@@ -247,27 +264,18 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Game Created!',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(color: context.green),
-                              ),
+                              Text('Game Created!',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(color: context.green)),
                               const SizedBox(height: 4),
-                              SelectableText(
-                                'jetlag.ratz.fyi/g/$_createdRoomCode',
-                                style: Theme.of(context).textTheme.bodyLarge,
-                              ),
+                              SelectableText('jetlag.ratz.fyi/g/$_createdRoomCode',
+                                style: Theme.of(context).textTheme.bodyLarge),
                             ],
                           ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.copy, size: 18),
                           onPressed: () {
-                            Clipboard.setData(ClipboardData(
-                              text: 'https://jetlag.ratz.fyi/g/$_createdRoomCode',
-                            ));
+                            Clipboard.setData(ClipboardData(text: 'https://jetlag.ratz.fyi/g/$_createdRoomCode'));
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Link copied')),
                             );
