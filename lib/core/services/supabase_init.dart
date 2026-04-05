@@ -21,7 +21,7 @@ class SupabaseConfig {
 /// Initialize Supabase
 Future<void> initializeSupabase() async {
   if (!SupabaseConfig.isConfigured) {
-    debugPrint('⚠️ Supabase not configured. Running in offline mode.');
+    debugPrint('Supabase not configured. Running in offline mode.');
     debugPrint('   Set SUPABASE_URL and SUPABASE_ANON_KEY environment variables.');
     return;
   }
@@ -29,15 +29,12 @@ Future<void> initializeSupabase() async {
   await Supabase.initialize(
     url: SupabaseConfig.url,
     anonKey: SupabaseConfig.anonKey,
-    authOptions: const FlutterAuthClientOptions(
-      authFlowType: AuthFlowType.pkce,
-    ),
     realtimeClientOptions: const RealtimeClientOptions(
       logLevel: RealtimeLogLevel.info,
     ),
   );
 
-  debugPrint('✅ Supabase initialized');
+  debugPrint('Supabase initialized');
 }
 
 /// Provider for Supabase client
@@ -51,21 +48,6 @@ final supabaseServiceProvider = Provider<SupabaseService?>((ref) {
   final client = ref.watch(supabaseClientProvider);
   if (client == null) return null;
   return SupabaseService(client);
-});
-
-/// Provider for auth state
-final supabaseAuthStateProvider = StreamProvider<AuthState>((ref) {
-  final client = ref.watch(supabaseClientProvider);
-  if (client == null) {
-    return Stream.value(AuthState(AuthChangeEvent.signedOut, null));
-  }
-  return client.auth.onAuthStateChange;
-});
-
-/// Provider for current user
-final supabaseUserProvider = Provider<User?>((ref) {
-  final client = ref.watch(supabaseClientProvider);
-  return client?.auth.currentUser;
 });
 
 /// Check if running in offline mode (no Supabase)

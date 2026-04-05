@@ -8,11 +8,25 @@ import '../../design/theme.dart';
 import '../../design/widgets/jetlag_button.dart';
 import '../../design/widgets/jetlag_card.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final _joinController = TextEditingController();
+  String? _joinError;
+
+  @override
+  void dispose() {
+    _joinController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final displayName = ref.watch(displayNameProvider);
 
     return Scaffold(
@@ -78,16 +92,69 @@ class HomeScreen extends ConsumerWidget {
 
               const Spacer(flex: 2),
 
-              // Main buttons
-              Center(
-                child: SizedBox(
-                  width: double.infinity,
-                  child: JetlagButton(
-                    label: 'Join Game',
-                    icon: Icons.group_add_outlined,
-                    variant: JetlagButtonVariant.primary,
-                    onPressed: () => context.push('/join'),
-                  ),
+              // Join Game field
+              JetlagCard(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Join Game',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Paste a game URL or code',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: context.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _joinController,
+                            style: TextStyle(
+                              color: context.textPrimary,
+                              fontSize: 14,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'URL or game code',
+                              hintStyle: TextStyle(color: context.textTertiary),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
+                              isDense: true,
+                            ),
+                            onSubmitted: (_) => _handleJoin(),
+                            onChanged: (_) {
+                              if (_joinError != null) {
+                                setState(() => _joinError = null);
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        JetlagButton(
+                          label: 'Go',
+                          variant: JetlagButtonVariant.primary,
+                          onPressed: _handleJoin,
+                        ),
+                      ],
+                    ),
+                    if (_joinError != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        _joinError!,
+                        style: TextStyle(color: context.red, fontSize: 12),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               const SizedBox(height: 12),
@@ -116,13 +183,6 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   const SizedBox(width: 32),
                   _IconBtn(
-                    icon: Icons.person_outline,
-                    label: displayName != null ? 'Account' : 'Sign In',
-                    onTap: () => context.push('/auth'),
-                    color: context.textSecondary,
-                  ),
-                  const SizedBox(width: 32),
-                  _IconBtn(
                     icon: Icons.settings_outlined,
                     label: 'Settings',
                     onTap: () => context.push('/settings'),
@@ -136,6 +196,33 @@ class HomeScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  void _handleJoin() {
+    final input = _joinController.text.trim();
+    if (input.isEmpty) {
+      setState(() => _joinError = 'Please enter a game URL or code');
+      return;
+    }
+
+    // Extract code from URL or use raw input
+    String code = input;
+
+    // Handle full URLs: https://jetlag.ratz.fyi/g/XXXX or .../join/XXXX
+    final uriMatch = RegExp(r'(?:/g/|/join/)([A-Za-z0-9_-]+)').firstMatch(input);
+    if (uriMatch != null) {
+      code = uriMatch.group(1)!;
+    } else {
+      // Strip any leading/trailing slashes or whitespace
+      code = code.replaceAll(RegExp(r'^[/\s]+|[/\s]+$'), '');
+    }
+
+    if (code.isEmpty) {
+      setState(() => _joinError = 'Could not parse game code');
+      return;
+    }
+
+    context.go('/g/$code');
   }
 
   void _showRules(BuildContext context) {

@@ -60,7 +60,7 @@ class SupabaseService {
     final response = await _client
         .from('sessions')
         .select()
-        .eq('room_code', roomCode.toUpperCase())
+        .eq('room_code', roomCode)
         .maybeSingle();
     if (response == null) return null;
     return GameSession.fromJson(_sessionFromDb(response));
@@ -528,9 +528,10 @@ class SupabaseService {
   // ============ Helpers ============
 
   String _generateRoomCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    // Nanoid-style: 21-char URL-safe string
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
     final random = Random.secure();
-    return List.generate(6, (_) => chars[random.nextInt(chars.length)]).join();
+    return List.generate(21, (_) => alphabet[random.nextInt(alphabet.length)]).join();
   }
 
   // DB field mapping helpers

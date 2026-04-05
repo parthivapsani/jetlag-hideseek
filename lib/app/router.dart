@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../features/auth/auth_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/game_area/polygon_editor_screen.dart';
 import '../features/lobby/lobby_screen.dart';
-import '../features/lobby/join_game_screen.dart';
 import '../features/game/seeker_view.dart';
 import '../features/game/hider_view.dart';
 import '../features/game/spectator_view.dart';
@@ -15,20 +13,10 @@ import '../features/game/round_summary_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/questions/question_drafting_screen.dart';
 import '../features/feature_requests/feature_requests_screen.dart';
-import '../core/providers/auth_provider.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authStateProvider);
-
   return GoRouter(
     initialLocation: '/',
-    redirect: (context, state) {
-      final isLoggedIn = authState.valueOrNull != null;
-      final isAuthRoute = state.matchedLocation == '/auth';
-
-      // Allow access to home without auth (anonymous play supported)
-      return null;
-    },
     routes: [
       GoRoute(
         path: '/',
@@ -36,23 +24,27 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const HomeScreen(),
       ),
       GoRoute(
-        path: '/auth',
-        name: 'auth',
-        builder: (context, state) => const AuthScreen(),
-      ),
-      GoRoute(
         path: '/create-game',
         name: 'create-game',
         builder: (context, state) => const PolygonEditorScreen(),
       ),
+      // Game lobby via nanoid
       GoRoute(
-        path: '/join',
-        name: 'join',
-        builder: (context, state) => const JoinGameScreen(),
+        path: '/g/:code',
+        name: 'lobby',
+        builder: (context, state) => LobbyScreen(
+          sessionCode: state.pathParameters['code']!,
+        ),
       ),
+      // Backwards compat: /join/:code redirects to /g/:code
+      GoRoute(
+        path: '/join/:code',
+        redirect: (context, state) => '/g/${state.pathParameters['code']}',
+      ),
+      // Legacy lobby route by session ID
       GoRoute(
         path: '/lobby/:sessionId',
-        name: 'lobby',
+        name: 'lobby-legacy',
         builder: (context, state) => LobbyScreen(
           sessionId: state.pathParameters['sessionId']!,
         ),

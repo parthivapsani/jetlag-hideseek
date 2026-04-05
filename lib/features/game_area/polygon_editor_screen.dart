@@ -689,7 +689,7 @@ class _PolygonEditorScreenState extends ConsumerState<PolygonEditorScreen> {
       );
 
       if (mounted) {
-        context.go('/lobby/${session.id}');
+        context.go('/g/${session.roomCode}');
       }
     } catch (e) {
       if (mounted) {

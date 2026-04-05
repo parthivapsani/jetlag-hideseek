@@ -161,11 +161,9 @@ class GameActions {
     if (sessionId == null) throw Exception('No active session');
 
     final deviceToken = await _ref.read(deviceTokenProvider.future);
-    final user = _ref.read(currentUserProvider);
 
     final participant = await _service.joinSession(
       sessionId: sessionId,
-      userId: user?.id,
       displayName: displayName,
       role: role,
       deviceToken: deviceToken,

@@ -1,21 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import '../services/supabase_init.dart' show supabaseClientProvider;
-
-// Auth state provider
-final authStateProvider = StreamProvider<User?>((ref) {
-  final client = ref.watch(supabaseClientProvider);
-  if (client == null) return Stream.value(null);
-  return client.auth.onAuthStateChange.map((event) => event.session?.user);
-});
-
-// Current user provider
-final currentUserProvider = Provider<User?>((ref) {
-  return ref.watch(authStateProvider).valueOrNull;
-});
 
 // Device token provider (for anonymous identification)
 final deviceTokenProvider = FutureProvider<String>((ref) async {
@@ -51,41 +36,21 @@ class DisplayNameNotifier extends StateNotifier<String?> {
   }
 }
 
-// Auth actions provider
-final authActionsProvider = Provider<AuthActions?>((ref) {
-  final client = ref.watch(supabaseClientProvider);
-  if (client == null) return null;
-  return AuthActions(client);
-});
-
-class AuthActions {
-  final SupabaseClient _client;
-
-  AuthActions(this._client);
-
-  Future<AuthResponse> signInAnonymously() async {
-    return await _client.auth.signInAnonymously();
+/// Helper to get/set the participant ID for a specific game session from localStorage.
+/// Key format: jetlag_participant_{nanoid}
+class GameParticipantStorage {
+  static Future<String?> getParticipantId(String gameCode) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('jetlag_participant_$gameCode');
   }
 
-  Future<AuthResponse> signInWithEmail(String email, String password) async {
-    return await _client.auth.signInWithPassword(
-      email: email,
-      password: password,
-    );
+  static Future<void> setParticipantId(String gameCode, String participantId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('jetlag_participant_$gameCode', participantId);
   }
 
-  Future<AuthResponse> signUpWithEmail(String email, String password) async {
-    return await _client.auth.signUp(
-      email: email,
-      password: password,
-    );
-  }
-
-  Future<void> signOut() async {
-    await _client.auth.signOut();
-  }
-
-  Future<void> resetPassword(String email) async {
-    await _client.auth.resetPasswordForEmail(email);
+  static Future<void> removeParticipantId(String gameCode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('jetlag_participant_$gameCode');
   }
 }

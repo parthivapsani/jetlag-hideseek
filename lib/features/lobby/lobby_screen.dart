@@ -5,14 +5,20 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/models/models.dart';
 import '../../core/providers/providers.dart';
+import '../../core/providers/auth_provider.dart';
+import '../../core/services/supabase_init.dart';
 import '../../design/widgets/widgets.dart';
 import '../../design/theme.dart';
 import '../../design/colors.dart';
+import 'join_flow.dart';
 
 class LobbyScreen extends ConsumerStatefulWidget {
-  final String sessionId;
+  /// The nanoid code from /g/:code route
+  final String? sessionCode;
+  /// Legacy: the session UUID from /lobby/:sessionId route
+  final String? sessionId;
 
-  const LobbyScreen({super.key, required this.sessionId});
+  const LobbyScreen({super.key, this.sessionCode, this.sessionId});
 
   @override
   ConsumerState<LobbyScreen> createState() => _LobbyScreenState();
@@ -20,15 +26,113 @@ class LobbyScreen extends ConsumerStatefulWidget {
 
 class _LobbyScreenState extends ConsumerState<LobbyScreen> {
   bool _hasJoined = false;
+  bool _isLoading = true;
+  String? _resolvedSessionId;
+  String? _resolvedCode;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    ref.read(currentSessionIdProvider.notifier).state = widget.sessionId;
+    _resolveSession();
+  }
+
+  Future<void> _resolveSession() async {
+    try {
+      final service = ref.read(supabaseServiceProvider);
+      if (service == null) {
+        setState(() {
+          _error = 'Not connected to server';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      GameSession? session;
+
+      if (widget.sessionCode != null) {
+        // Try by room code (nanoid)
+        session = await service.getSessionByRoomCode(widget.sessionCode!);
+        _resolvedCode = widget.sessionCode;
+      } else if (widget.sessionId != null) {
+        // Legacy: by session ID
+        session = await service.getSession(widget.sessionId!);
+        _resolvedCode = session?.roomCode;
+      }
+
+      if (session == null) {
+        setState(() {
+          _error = 'Game not found';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      _resolvedSessionId = session.id;
+      _resolvedCode ??= session.roomCode;
+
+      // Set up providers
+      ref.read(currentSessionIdProvider.notifier).state = session.id;
+
+      // Check localStorage for existing participant ID
+      final storedParticipantId =
+          await GameParticipantStorage.getParticipantId(_resolvedCode!);
+
+      if (storedParticipantId != null) {
+        // Verify this participant still exists in the session
+        final participants = await service.getParticipants(session.id);
+        final found = participants.where((p) => p.id == storedParticipantId).firstOrNull;
+        if (found != null) {
+          ref.read(currentParticipantIdProvider.notifier).state = storedParticipantId;
+          setState(() {
+            _hasJoined = true;
+            _isLoading = false;
+          });
+          return;
+        } else {
+          // Stale participant ID, clear it
+          await GameParticipantStorage.removeParticipantId(_resolvedCode!);
+        }
+      }
+
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Error loading game: $e';
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(_error!, style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 16),
+              JetlagButton(
+                label: 'Go Home',
+                variant: JetlagButtonVariant.secondary,
+                onPressed: () => context.go('/'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final sessionAsync = ref.watch(currentSessionProvider);
     final participantsAsync = ref.watch(participantsProvider);
     final teamsAsync = ref.watch(teamsProvider);
@@ -71,6 +175,40 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
           });
         }
 
+        // Show join flow if not joined yet
+        if (!_hasJoined) {
+          final participants = participantsAsync.valueOrNull ?? [];
+          return Scaffold(
+            body: SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back),
+                          onPressed: () => context.go('/'),
+                        ),
+                        const Spacer(),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: JoinFlow(
+                      sessionCode: _resolvedCode!,
+                      sessionId: _resolvedSessionId!,
+                      existingParticipants: participants,
+                      onJoined: () => setState(() => _hasJoined = true),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
         return Scaffold(
           body: SafeArea(
             child: Column(
@@ -90,62 +228,32 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                   ),
                 ),
 
-                // Room code header
-                _RoomCodeHeader(
-                  roomCode: session.roomCode,
-                  onCopy: () => _copyRoomCode(session.roomCode),
+                // Share link header
+                _ShareLinkHeader(
+                  code: _resolvedCode!,
+                  onCopy: () => _copyGameLink(),
                 ),
 
                 const SizedBox(height: 16),
 
                 // Main content
                 Expanded(
-                  child: !_hasJoined
-                      ? _buildJoinSection()
-                      : _buildTeamLayout(
-                          teamsAsync, participantsAsync, currentParticipant),
+                  child: _buildTeamLayout(
+                      teamsAsync, participantsAsync, currentParticipant),
                 ),
 
                 // Unassigned players
-                if (_hasJoined)
-                  _buildUnassignedPlayers(
-                      participantsAsync, teamsAsync, currentParticipant),
+                _buildUnassignedPlayers(
+                    participantsAsync, teamsAsync, currentParticipant),
 
                 // Start button (host only)
-                if (_hasJoined && currentParticipant?.isHost == true)
+                if (currentParticipant?.isHost == true)
                   _buildStartButton(balanced),
               ],
             ),
           ),
         );
       },
-    );
-  }
-
-  Widget _buildJoinSection() {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Ready to join?',
-            style: Theme.of(context).textTheme.headlineMedium,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'You will be assigned to a team in the lobby.',
-            style: Theme.of(context).textTheme.bodyMedium,
-            textAlign: TextAlign.center,
-          ),
-          const Spacer(),
-          JetlagButton(
-            label: 'Join Game',
-            onPressed: _joinGame,
-          ),
-        ],
-      ),
     );
   }
 
@@ -234,7 +342,6 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
 
     if (unassigned.isEmpty) return const SizedBox.shrink();
 
-    // Auto-assign first available team to unassigned players
     final firstTeamId = teams.isNotEmpty ? teams.first.id : null;
 
     return Padding(
@@ -309,7 +416,6 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
   }
 
   void _onTapParticipant(Participant participant, String otherTeamId) {
-    // Tapping switches the participant to the other team
     _switchTeam(participant.id, otherTeamId);
   }
 
@@ -320,49 +426,6 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error switching team: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _joinGame() async {
-    final displayName = ref.read(displayNameProvider) ?? 'Player';
-    final session = ref.read(currentSessionProvider).valueOrNull;
-    final isHost =
-        session?.createdBy == await ref.read(deviceTokenProvider.future);
-
-    try {
-      final participant = await ref.read(gameActionsProvider)!.joinAsParticipant(
-            displayName: displayName,
-            role: ParticipantRole.seeker, // default role, team matters more now
-            isHost: isHost,
-          );
-
-      // Auto-assign to the team with fewer members
-      final teams = ref.read(teamsProvider).valueOrNull ?? [];
-      final participants = ref.read(participantsProvider).valueOrNull ?? [];
-      if (teams.length >= 2) {
-        final counts = <String, int>{};
-        for (final t in teams) {
-          counts[t.id] =
-              participants.where((p) => p.teamId == t.id).length;
-        }
-        // Pick team with fewest members
-        final sorted = teams.toList()
-          ..sort(
-              (a, b) => (counts[a.id] ?? 0).compareTo(counts[b.id] ?? 0));
-        await ref
-            .read(teamActionsProvider)
-            ?.switchTeam(participant.id, sorted.first.id);
-      }
-
-      setState(() {
-        _hasJoined = true;
-      });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error joining: $e')),
         );
       }
     }
@@ -381,7 +444,7 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
   }
 
   void _navigateToGame(ParticipantRole role) {
-    final sessionId = widget.sessionId;
+    final sessionId = _resolvedSessionId!;
     switch (role) {
       case ParticipantRole.hider:
         context.go('/game/$sessionId/hider');
@@ -396,27 +459,31 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
   }
 
   Future<void> _leaveLobby() async {
+    if (_resolvedCode != null) {
+      await GameParticipantStorage.removeParticipantId(_resolvedCode!);
+    }
     await ref.read(gameActionsProvider)?.leaveSession();
     if (mounted) {
       context.go('/');
     }
   }
 
-  void _copyRoomCode(String code) {
-    Clipboard.setData(ClipboardData(text: code));
+  void _copyGameLink() {
+    final url = 'https://jetlag.ratz.fyi/g/$_resolvedCode';
+    Clipboard.setData(ClipboardData(text: url));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Room code copied!')),
+      const SnackBar(content: Text('Game link copied!')),
     );
   }
 }
 
-// ============ Room Code Header ============
+// ============ Share Link Header ============
 
-class _RoomCodeHeader extends StatelessWidget {
-  final String roomCode;
+class _ShareLinkHeader extends StatelessWidget {
+  final String code;
   final VoidCallback onCopy;
 
-  const _RoomCodeHeader({required this.roomCode, required this.onCopy});
+  const _ShareLinkHeader({required this.code, required this.onCopy});
 
   @override
   Widget build(BuildContext context) {
@@ -427,27 +494,29 @@ class _RoomCodeHeader extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Column(
-              children: [
-                Text('ROOM CODE',
-                    style: Theme.of(context).textTheme.labelSmall),
-                const SizedBox(height: 4),
-                Text(
-                  roomCode,
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 6,
-                    color: context.accent,
+            Expanded(
+              child: Column(
+                children: [
+                  Text('SHARE GAME LINK',
+                      style: Theme.of(context).textTheme.labelSmall),
+                  const SizedBox(height: 4),
+                  Text(
+                    'jetlag.ratz.fyi/g/${code.length > 12 ? '${code.substring(0, 12)}...' : code}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: context.accent,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(width: 12),
             IconButton(
               icon: Icon(Icons.copy_rounded, color: context.textSecondary),
               onPressed: onCopy,
-              tooltip: 'Copy room code',
+              tooltip: 'Copy game link',
             ),
           ],
         ),

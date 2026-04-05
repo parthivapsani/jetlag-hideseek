@@ -28,7 +28,6 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
     final displayName = ref.watch(displayNameProvider);
-    final user = ref.watch(currentUserProvider);
 
     return Scaffold(
       backgroundColor: context.bg,
@@ -52,7 +51,6 @@ class SettingsScreen extends ConsumerWidget {
           _SectionLabel('Profile'),
           const SizedBox(height: 8),
           JetlagCard(
-            onTap: () => context.push('/auth'),
             child: Row(
               children: [
                 CircleAvatar(
@@ -80,7 +78,7 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                       ),
                       Text(
-                        user?.email ?? 'Playing anonymously',
+                        'Anonymous player',
                         style: TextStyle(
                           fontSize: 12,
                           color: context.textTertiary,
@@ -89,7 +87,6 @@ class SettingsScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right, color: context.textTertiary, size: 20),
               ],
             ),
           ),
