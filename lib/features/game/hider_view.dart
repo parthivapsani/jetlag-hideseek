@@ -5,7 +5,10 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../core/models/models.dart';
 import '../../core/providers/providers.dart';
-import '../../app/theme.dart';
+import '../../core/providers/round_provider.dart';
+import '../../design/widgets/widgets.dart';
+import '../../design/theme.dart';
+import '../../design/colors.dart';
 import 'game_map.dart';
 import '../cards/card_deck_view.dart';
 import '../questions/answer_interface.dart';
@@ -62,9 +65,9 @@ class _HiderViewState extends ConsumerState<HiderView> {
   @override
   Widget build(BuildContext context) {
     final sessionAsync = ref.watch(currentSessionProvider);
-    final timerState = ref.watch(timerProvider);
     final currentQuestion = ref.watch(currentQuestionProvider);
     final blockingCurse = ref.watch(blockingCurseProvider);
+    final roundNumber = ref.watch(currentRoundNumberProvider);
 
     return sessionAsync.when(
       loading: () => const Scaffold(
@@ -91,7 +94,6 @@ class _HiderViewState extends ConsumerState<HiderView> {
           );
         }
 
-        // Check if game ended
         if (session.status == SessionStatus.ended) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             context.go('/game/${widget.sessionId}/over');
@@ -99,152 +101,163 @@ class _HiderViewState extends ConsumerState<HiderView> {
         }
 
         return Scaffold(
-          body: SafeArea(
-            child: Column(
-              children: [
-                // Header with timer
-                _buildHeader(session, timerState),
+          body: Column(
+            children: [
+              // Design system status bar
+              JetlagStatusBar(
+                role: GameRole.hider,
+                label: roundNumber > 0
+                    ? 'HIDING  \u2022  ROUND $roundNumber'
+                    : 'HIDING',
+                trailing: _buildTimerTrailing(),
+              ),
 
-                // Blocking curse warning
-                if (blockingCurse != null) _buildCurseWarning(blockingCurse),
+              // Blocking curse warning
+              if (blockingCurse != null) _buildCurseWarning(blockingCurse),
 
-                // Incoming question banner
-                if (currentQuestion != null)
-                  _buildIncomingQuestionBanner(currentQuestion),
+              // Incoming question banner
+              if (currentQuestion != null)
+                _buildIncomingQuestionBanner(currentQuestion),
 
-                // Main content
-                Expanded(
-                  child: IndexedStack(
-                    index: _selectedTab,
-                    children: [
-                      // Map tab
-                      GameMap(
-                        showHiderZone: true,
-                        showSeekerLocations: true,
-                        hiderLocation: _hidingZoneCenter,
-                        zoneRadius: session.zoneRadiusMeters,
+              // Map + bottom sheet overlay
+              Expanded(
+                child: Stack(
+                  children: [
+                    // Full-screen map always visible
+                    _buildMap(session),
+
+                    // Bottom sheet overlay for Answer tab
+                    if (_selectedTab == 1)
+                      JetlagBottomSheet(
+                        initialPosition: SheetPosition.half,
+                        child: currentQuestion != null
+                            ? AnswerInterface(sessionQuestion: currentQuestion)
+                            : Padding(
+                                padding: const EdgeInsets.all(32),
+                                child: Center(
+                                  child: Text(
+                                    'No pending questions',
+                                    style: TextStyle(
+                                        color: context.textSecondary),
+                                  ),
+                                ),
+                              ),
                       ),
-                      // Cards tab
-                      const CardDeckView(),
-                      // Answer tab (shows when question pending)
-                      currentQuestion != null
-                          ? AnswerInterface(sessionQuestion: currentQuestion)
-                          : const Center(child: Text('No pending questions')),
-                    ],
-                  ),
+
+                    // Bottom sheet overlay for Cards tab
+                    if (_selectedTab == 2)
+                      const JetlagBottomSheet(
+                        initialPosition: SheetPosition.half,
+                        child: CardDeckView(),
+                      ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _selectedTab,
-            onDestinationSelected: (index) => setState(() => _selectedTab = index),
-            destinations: [
-              const NavigationDestination(
-                icon: Icon(Icons.map_outlined),
-                selectedIcon: Icon(Icons.map),
-                label: 'Map',
-              ),
-              NavigationDestination(
-                icon: Badge(
-                  label: Text(
-                    ref.watch(cardsInHandProvider).length.toString(),
-                  ),
-                  isLabelVisible: ref.watch(cardsInHandProvider).isNotEmpty,
-                  child: const Icon(Icons.style_outlined),
-                ),
-                selectedIcon: const Icon(Icons.style),
-                label: 'Cards',
-              ),
-              NavigationDestination(
-                icon: Badge(
-                  isLabelVisible: currentQuestion != null,
-                  child: const Icon(Icons.question_answer_outlined),
-                ),
-                selectedIcon: const Icon(Icons.question_answer),
-                label: 'Answer',
               ),
             ],
           ),
+          bottomNavigationBar: _buildBottomNav(currentQuestion),
         );
       },
     );
   }
 
-  Widget _buildHeader(GameSession session, TimerState timerState) {
+  Widget _buildTimerTrailing() {
     final formattedTime = ref.watch(formattedRemainingTimeProvider);
     final effectiveTime = ref.watch(formattedEffectiveTimeProvider);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      color: JetLagTheme.hiderGreen,
-      child: Row(
-        children: [
-          // Status
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _getStatusText(session.status),
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
-                ),
-                const Text(
-                  'HIDER',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+    final session = ref.watch(currentSessionProvider).valueOrNull;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: _showTimeBreakdown,
+          child: Text(
+            '$formattedTime / $effectiveTime',
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              fontFeatures: [FontFeature.tabularFigures()],
+              color: Colors.black,
             ),
           ),
+        ),
+        const SizedBox(width: 6),
+        GestureDetector(
+          onTap: session != null ? () => _showMenu(session) : null,
+          child: const Icon(Icons.more_vert, color: Colors.black, size: 18),
+        ),
+      ],
+    );
+  }
 
-          // Timer
-          GestureDetector(
-            onTap: () => _showTimeBreakdown(),
-            child: Column(
-              children: [
-                Text(
-                  formattedTime,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'monospace',
-                  ),
-                ),
-                Row(
-                  children: [
-                    Text(
-                      'of $effectiveTime',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const Icon(
-                      Icons.info_outline,
-                      color: Colors.white70,
-                      size: 14,
-                    ),
-                  ],
-                ),
-              ],
+  Widget _buildMap(GameSession session) {
+    try {
+      return GameMap(
+        showHiderZone: true,
+        showSeekerLocations: true,
+        hiderLocation: _hidingZoneCenter,
+        zoneRadius: session.zoneRadiusMeters,
+      );
+    } catch (_) {
+      return Container(
+        color: JetlagColors.darkSurface2,
+        child: const Center(
+          child: Text(
+            'Map',
+            style: TextStyle(fontSize: 18, color: JetlagColors.darkText2),
+          ),
+        ),
+      );
+    }
+  }
+
+  Widget _buildBottomNav(SessionQuestion? currentQuestion) {
+    return NavigationBar(
+      backgroundColor: context.surface,
+      surfaceTintColor: Colors.transparent,
+      indicatorColor: JetlagColors.greenGlow,
+      selectedIndex: _selectedTab,
+      onDestinationSelected: (index) {
+        if (index == 3) {
+          _showTeamInfo();
+          return;
+        }
+        setState(() => _selectedTab = index);
+      },
+      destinations: [
+        const NavigationDestination(
+          icon: Icon(Icons.map_outlined),
+          selectedIcon: Icon(Icons.map, color: JetlagColors.green),
+          label: 'Map',
+        ),
+        NavigationDestination(
+          icon: Badge(
+            isLabelVisible: currentQuestion != null,
+            backgroundColor: JetlagColors.orange,
+            child: const Icon(Icons.question_answer_outlined),
+          ),
+          selectedIcon:
+              const Icon(Icons.question_answer, color: JetlagColors.green),
+          label: 'Answer',
+        ),
+        NavigationDestination(
+          icon: Badge(
+            label: Text(
+              ref.watch(cardsInHandProvider).length.toString(),
+              style: const TextStyle(fontSize: 10),
             ),
+            isLabelVisible: ref.watch(cardsInHandProvider).isNotEmpty,
+            backgroundColor: JetlagColors.green,
+            child: const Icon(Icons.style_outlined),
           ),
-
-          // Menu
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            onPressed: () => _showMenu(session),
-          ),
-        ],
-      ),
+          selectedIcon: const Icon(Icons.style, color: JetlagColors.green),
+          label: 'Cards',
+        ),
+        const NavigationDestination(
+          icon: Icon(Icons.group_outlined),
+          selectedIcon: Icon(Icons.group, color: JetlagColors.green),
+          label: 'Team',
+        ),
+      ],
     );
   }
 
@@ -261,11 +274,11 @@ class _HiderViewState extends ConsumerState<HiderView> {
     );
 
     return Container(
-      padding: const EdgeInsets.all(12),
-      color: Colors.red.shade100,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      color: JetlagColors.redGlow,
       child: Row(
         children: [
-          const Icon(Icons.lock, color: Colors.red),
+          const Icon(Icons.lock, color: JetlagColors.red, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -274,15 +287,16 @@ class _HiderViewState extends ConsumerState<HiderView> {
                 Text(
                   card.name,
                   style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
+                    fontWeight: FontWeight.w600,
+                    color: JetlagColors.red,
+                    fontSize: 13,
                   ),
                 ),
                 Text(
                   card.description,
-                  style: TextStyle(
-                    color: Colors.red.shade700,
-                    fontSize: 12,
+                  style: const TextStyle(
+                    color: JetlagColors.red,
+                    fontSize: 11,
                   ),
                 ),
               ],
@@ -292,9 +306,10 @@ class _HiderViewState extends ConsumerState<HiderView> {
             Text(
               _formatRemainingTime(curse.remainingDuration),
               style: const TextStyle(
-                fontFamily: 'monospace',
-                color: Colors.red,
-                fontWeight: FontWeight.bold,
+                fontFeatures: [FontFeature.tabularFigures()],
+                color: JetlagColors.red,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
               ),
             ),
         ],
@@ -321,15 +336,16 @@ class _HiderViewState extends ConsumerState<HiderView> {
     final isUrgent = remainingTime.inMinutes < 2;
 
     return GestureDetector(
-      onTap: () => setState(() => _selectedTab = 2),
+      onTap: () => setState(() => _selectedTab = 1),
       child: Container(
-        padding: const EdgeInsets.all(12),
-        color: isUrgent ? Colors.orange.shade100 : Colors.blue.shade100,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        color: isUrgent ? JetlagColors.orangeGlow : JetlagColors.accentGlow,
         child: Row(
           children: [
             Icon(
               Icons.question_answer,
-              color: isUrgent ? Colors.orange : Colors.blue,
+              color: isUrgent ? JetlagColors.orange : JetlagColors.accent,
+              size: 18,
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -339,15 +355,16 @@ class _HiderViewState extends ConsumerState<HiderView> {
                   Text(
                     'Incoming Question',
                     style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isUrgent ? Colors.orange.shade800 : Colors.blue.shade800,
+                      fontWeight: FontWeight.w600,
+                      color: isUrgent ? JetlagColors.orange : JetlagColors.accent,
+                      fontSize: 13,
                     ),
                   ),
                   Text(
                     q.text,
                     style: TextStyle(
-                      fontSize: 12,
-                      color: isUrgent ? Colors.orange.shade700 : Colors.blue.shade700,
+                      fontSize: 11,
+                      color: isUrgent ? JetlagColors.orange : JetlagColors.accent,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -355,40 +372,14 @@ class _HiderViewState extends ConsumerState<HiderView> {
                 ],
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: isUrgent ? Colors.orange : Colors.blue,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                _formatRemainingTime(remainingTime),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                ),
-              ),
+            JetlagBadge(
+              label: _formatRemainingTime(remainingTime),
+              color: isUrgent ? JetlagBadgeColor.orange : JetlagBadgeColor.blue,
             ),
           ],
         ),
       ),
     );
-  }
-
-  String _getStatusText(SessionStatus status) {
-    switch (status) {
-      case SessionStatus.waiting:
-        return 'Waiting';
-      case SessionStatus.hiding:
-        return 'Hiding Period';
-      case SessionStatus.seeking:
-        return 'Being Sought';
-      case SessionStatus.paused:
-        return 'Paused';
-      case SessionStatus.ended:
-        return 'Game Over';
-    }
   }
 
   String _formatRemainingTime(Duration? duration) {
@@ -422,19 +413,24 @@ class _HiderViewState extends ConsumerState<HiderView> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Time Breakdown'),
+        backgroundColor: this.context.surface,
+        title: Text('Time Breakdown',
+            style: TextStyle(color: this.context.textPrimary)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _timeRow('Base Time', session.hidingPeriodDuration),
             if (totalBonusPercent > 0)
-              _timeRow('+${(totalBonusPercent * 100).toInt()}% Bonus',
-                  Duration(seconds: (session.hidingPeriodSeconds * totalBonusPercent).round())),
+              _timeRow(
+                  '+${(totalBonusPercent * 100).toInt()}% Bonus',
+                  Duration(
+                      seconds: (session.hidingPeriodSeconds * totalBonusPercent)
+                          .round())),
             if (totalBonusMinutes > 0)
               _timeRow('+$totalBonusMinutes min Bonus',
                   Duration(minutes: totalBonusMinutes)),
-            const Divider(),
+            Divider(color: this.context.border),
             _timeRow('Effective Time', effectiveTime, isBold: true),
           ],
         ),
@@ -451,6 +447,7 @@ class _HiderViewState extends ConsumerState<HiderView> {
   Widget _timeRow(String label, Duration duration, {bool isBold = false}) {
     final style = TextStyle(
       fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+      color: context.textPrimary,
     );
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -476,6 +473,10 @@ class _HiderViewState extends ConsumerState<HiderView> {
   void _showMenu(GameSession session) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: context.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
       builder: (context) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -515,9 +516,12 @@ class _HiderViewState extends ConsumerState<HiderView> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Surrender?'),
-        content: const Text(
+        backgroundColor: this.context.surface,
+        title: Text('Surrender?',
+            style: TextStyle(color: this.context.textPrimary)),
+        content: Text(
           'Are you sure you want to surrender? The seekers will win.',
+          style: TextStyle(color: this.context.textSecondary),
         ),
         actions: [
           TextButton(
@@ -532,9 +536,92 @@ class _HiderViewState extends ConsumerState<HiderView> {
                     winnerId: seekers.isNotEmpty ? seekers.first.id : null,
                   );
             },
-            child: const Text('Surrender'),
+            child: Text('Surrender',
+                style: TextStyle(color: this.context.red)),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showTeamInfo() {
+    final teams = ref.read(teamsProvider).valueOrNull ?? [];
+    final participants = ref.read(participantsProvider).valueOrNull ?? [];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: context.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: context.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'TEAM INFO',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: context.textTertiary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...teams.map((team) {
+              final members =
+                  participants.where((p) => p.teamId == team.id).toList();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      team.name,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    if (members.isEmpty)
+                      Text('No members',
+                          style: TextStyle(
+                              color: context.textTertiary, fontSize: 13)),
+                    ...members.map((m) => Padding(
+                          padding: const EdgeInsets.only(left: 8, top: 2),
+                          child: Row(
+                            children: [
+                              Icon(Icons.person,
+                                  size: 14, color: context.textSecondary),
+                              const SizedBox(width: 6),
+                              Text(m.displayName,
+                                  style: TextStyle(
+                                      color: context.textSecondary,
+                                      fontSize: 13)),
+                            ],
+                          ),
+                        )),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }

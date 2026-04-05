@@ -4,7 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/models/models.dart';
 import '../../core/providers/providers.dart';
-import '../../app/theme.dart';
+import '../../core/providers/round_provider.dart';
+import '../../design/widgets/widgets.dart';
+import '../../design/theme.dart';
+import '../../design/colors.dart';
 import 'game_map.dart';
 import '../questions/question_browser.dart';
 
@@ -42,8 +45,8 @@ class _SeekerViewState extends ConsumerState<SeekerView> {
   @override
   Widget build(BuildContext context) {
     final sessionAsync = ref.watch(currentSessionProvider);
-    final timerState = ref.watch(timerProvider);
     final activeCursesAsync = ref.watch(activeCursesProvider);
+    final roundNumber = ref.watch(currentRoundNumberProvider);
 
     return sessionAsync.when(
       loading: () => const Scaffold(
@@ -70,7 +73,6 @@ class _SeekerViewState extends ConsumerState<SeekerView> {
           );
         }
 
-        // Check if game ended
         if (session.status == SessionStatus.ended) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             context.go('/game/${widget.sessionId}/over');
@@ -78,152 +80,171 @@ class _SeekerViewState extends ConsumerState<SeekerView> {
         }
 
         return Scaffold(
-          body: SafeArea(
-            child: Column(
-              children: [
-                // Header with timer
-                _buildHeader(session, timerState),
+          body: Column(
+            children: [
+              // Design system status bar
+              JetlagStatusBar(
+                role: GameRole.seeker,
+                label: roundNumber > 0
+                    ? 'SEEKING  \u2022  ROUND $roundNumber'
+                    : 'SEEKING',
+                trailing: _buildTimerTrailing(),
+              ),
 
-                // Active curses display
-                activeCursesAsync.whenData((curses) {
-                  if (curses.isEmpty) return const SizedBox.shrink();
-                  return _buildCursesBar(curses);
-                }).valueOrNull ?? const SizedBox.shrink(),
+              // Active curses display
+              activeCursesAsync.whenData((curses) {
+                if (curses.isEmpty) return const SizedBox.shrink();
+                return _buildCursesBar(curses);
+              }).valueOrNull ??
+                  const SizedBox.shrink(),
 
-                // Main content
-                Expanded(
-                  child: IndexedStack(
-                    index: _selectedTab,
-                    children: [
-                      // Map tab
-                      const GameMap(
-                        showHiderZone: false,
-                        showSeekerLocations: false,
+              // Map + bottom sheet overlay
+              Expanded(
+                child: Stack(
+                  children: [
+                    // Full-screen map always visible
+                    _buildMap(),
+
+                    // Bottom sheet overlay for Questions tab
+                    if (_selectedTab == 1)
+                      JetlagBottomSheet(
+                        initialPosition: SheetPosition.half,
+                        child: const QuestionBrowser(),
                       ),
-                      // Questions tab
-                      const QuestionBrowser(),
-                      // History tab
-                      _buildQuestionHistory(),
-                    ],
-                  ),
+
+                    // Bottom sheet overlay for Cards/History tab
+                    if (_selectedTab == 2)
+                      JetlagBottomSheet(
+                        initialPosition: SheetPosition.half,
+                        child: _buildQuestionHistory(),
+                      ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          floatingActionButton: _selectedTab != 2 // Don't show on history tab
-              ? FloatingActionButton.extended(
-                  onPressed: () => context.push('/game/${widget.sessionId}/draft-question'),
-                  backgroundColor: JetLagTheme.primaryBlue,
-                  icon: const Icon(Icons.add, color: Colors.white),
-                  label: const Text(
-                    'Ask Question',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
-                )
-              : null,
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _selectedTab,
-            onDestinationSelected: (index) => setState(() => _selectedTab = index),
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.map_outlined),
-                selectedIcon: Icon(Icons.map),
-                label: 'Map',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.question_mark_outlined),
-                selectedIcon: Icon(Icons.question_mark),
-                label: 'Questions',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.history_outlined),
-                selectedIcon: Icon(Icons.history),
-                label: 'History',
               ),
             ],
           ),
+          floatingActionButton: _selectedTab == 0
+              ? FloatingActionButton.extended(
+                  onPressed: () =>
+                      context.push('/game/${widget.sessionId}/draft-question'),
+                  backgroundColor: JetlagColors.accent,
+                  icon: const Icon(Icons.add, color: Colors.white),
+                  label: const Text(
+                    'Ask Question',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                )
+              : null,
+          bottomNavigationBar: _buildBottomNav(),
         );
       },
     );
   }
 
-  Widget _buildHeader(GameSession session, TimerState timerState) {
+  Widget _buildTimerTrailing() {
     final formattedTime = ref.watch(formattedRemainingTimeProvider);
     final effectiveTime = ref.watch(formattedEffectiveTimeProvider);
+    final session = ref.watch(currentSessionProvider).valueOrNull;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '$formattedTime / $effectiveTime',
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            fontFeatures: [FontFeature.tabularFigures()],
+            color: Colors.black,
+          ),
+        ),
+        const SizedBox(width: 6),
+        GestureDetector(
+          onTap: session != null ? () => _showMenu(session) : null,
+          child: const Icon(Icons.more_vert, color: Colors.black, size: 18),
+        ),
+      ],
+    );
+  }
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      color: JetLagTheme.seekerRed,
-      child: Row(
-        children: [
-          // Status
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _getStatusText(session.status),
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
-                ),
-                Text(
-                  'SEEKER',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+  Widget _buildMap() {
+    try {
+      return const GameMap(
+        showHiderZone: false,
+        showSeekerLocations: false,
+      );
+    } catch (_) {
+      return Container(
+        color: JetlagColors.darkSurface2,
+        child: Center(
+          child: Text(
+            'Map',
+            style: TextStyle(
+              fontSize: 18,
+              color: JetlagColors.darkText2,
             ),
           ),
+        ),
+      );
+    }
+  }
 
-          // Timer
-          Column(
-            children: [
-              Text(
-                formattedTime,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                ),
-              ),
-              Text(
-                'of $effectiveTime',
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-
-          // Menu
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            onPressed: () => _showMenu(session),
-          ),
-        ],
-      ),
+  Widget _buildBottomNav() {
+    return NavigationBar(
+      backgroundColor: context.surface,
+      surfaceTintColor: Colors.transparent,
+      indicatorColor: JetlagColors.redGlow,
+      selectedIndex: _selectedTab,
+      onDestinationSelected: (index) {
+        if (index == 3) {
+          // Team tab navigates to team info page
+          _showTeamInfo();
+          return;
+        }
+        setState(() => _selectedTab = index);
+      },
+      destinations: const [
+        NavigationDestination(
+          icon: Icon(Icons.map_outlined),
+          selectedIcon: Icon(Icons.map, color: JetlagColors.red),
+          label: 'Map',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.help_outline),
+          selectedIcon: Icon(Icons.help, color: JetlagColors.red),
+          label: 'Questions',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.history_outlined),
+          selectedIcon: Icon(Icons.history, color: JetlagColors.red),
+          label: 'Cards',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.group_outlined),
+          selectedIcon: Icon(Icons.group, color: JetlagColors.red),
+          label: 'Team',
+        ),
+      ],
     );
   }
 
   Widget _buildCursesBar(List<ActiveCurse> curses) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Colors.orange.shade100,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      color: JetlagColors.orangeGlow,
       child: Row(
         children: [
-          const Icon(Icons.warning, color: Colors.orange, size: 20),
+          const Icon(Icons.warning_amber_rounded,
+              color: JetlagColors.orange, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               'Hider has ${curses.length} active curse(s)',
-              style: const TextStyle(color: Colors.orange),
+              style: const TextStyle(
+                color: JetlagColors.orange,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],
@@ -235,62 +256,166 @@ class _SeekerViewState extends ConsumerState<SeekerView> {
     final questionsAsync = ref.watch(sessionQuestionsProvider);
 
     return questionsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => Center(child: Text('Error: $error')),
+      loading: () => const Padding(
+        padding: EdgeInsets.all(32),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (error, _) => Padding(
+        padding: const EdgeInsets.all(32),
+        child: Center(child: Text('Error: $error')),
+      ),
       data: (questions) {
         if (questions.isEmpty) {
-          return const Center(
-            child: Text('No questions asked yet'),
+          return Padding(
+            padding: const EdgeInsets.all(32),
+            child: Center(
+              child: Text(
+                'No questions asked yet',
+                style: TextStyle(color: context.textSecondary),
+              ),
+            ),
           );
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: questions.length,
-          itemBuilder: (context, index) {
-            final sq = questions[index];
-            final allQuestions = ref.watch(allQuestionsProvider);
-            final question = allQuestions.firstWhere(
-              (q) => q.id == sq.questionId,
-              orElse: () => Question(
-                id: sq.questionId,
-                text: 'Unknown question',
-                category: sq.category,
-                cardsDraw: sq.category.cardsDraw,
-                cardsKeep: sq.category.cardsKeep,
-                responseTimeMinutes: 5,
-                answerType: AnswerType.text,
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Text(
+                    'QUESTION HISTORY',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: context.textTertiary,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const Spacer(),
+                  JetlagBadge(
+                    label: '${questions.length}',
+                    color: JetlagBadgeColor.red,
+                  ),
+                ],
               ),
-            );
-
-            return _QuestionHistoryCard(
-              sessionQuestion: sq,
-              question: question,
-            );
-          },
+            ),
+            ...questions.map((sq) {
+              final allQuestions = ref.watch(allQuestionsProvider);
+              final question = allQuestions.firstWhere(
+                (q) => q.id == sq.questionId,
+                orElse: () => Question(
+                  id: sq.questionId,
+                  text: 'Unknown question',
+                  category: sq.category,
+                  cardsDraw: sq.category.cardsDraw,
+                  cardsKeep: sq.category.cardsKeep,
+                  responseTimeMinutes: 5,
+                  answerType: AnswerType.text,
+                ),
+              );
+              return _QuestionHistoryCard(
+                sessionQuestion: sq,
+                question: question,
+              );
+            }),
+            const SizedBox(height: 32),
+          ],
         );
       },
     );
   }
 
-  String _getStatusText(SessionStatus status) {
-    switch (status) {
-      case SessionStatus.waiting:
-        return 'Waiting';
-      case SessionStatus.hiding:
-        return 'Hiding Period';
-      case SessionStatus.seeking:
-        return 'Seeking';
-      case SessionStatus.paused:
-        return 'Paused';
-      case SessionStatus.ended:
-        return 'Game Over';
-    }
+  void _showTeamInfo() {
+    final teams = ref.read(teamsProvider).valueOrNull ?? [];
+    final participants = ref.read(participantsProvider).valueOrNull ?? [];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: context.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: context.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'TEAM INFO',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: context.textTertiary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...teams.map((team) {
+              final members = participants
+                  .where((p) => p.teamId == team.id)
+                  .toList();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      team.name,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    if (members.isEmpty)
+                      Text('No members',
+                          style: TextStyle(color: context.textTertiary,
+                              fontSize: 13)),
+                    ...members.map((m) => Padding(
+                          padding: const EdgeInsets.only(left: 8, top: 2),
+                          child: Row(
+                            children: [
+                              Icon(Icons.person, size: 14,
+                                  color: context.textSecondary),
+                              const SizedBox(width: 6),
+                              Text(m.displayName,
+                                  style: TextStyle(
+                                      color: context.textSecondary,
+                                      fontSize: 13)),
+                            ],
+                          ),
+                        )),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showMenu(GameSession session) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: context.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
       builder: (context) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -308,7 +433,7 @@ class _SeekerViewState extends ConsumerState<SeekerView> {
             onTap: () async {
               Navigator.pop(context);
               await ref.read(gameActionsProvider).leaveSession();
-              if (mounted) context.go('/');
+              if (mounted) this.context.go('/');
             },
           ),
         ],
@@ -326,104 +451,86 @@ class _QuestionHistoryCard extends StatelessWidget {
     required this.question,
   });
 
+  JetlagBadgeColor _statusBadgeColor(QuestionStatus status) {
+    switch (status) {
+      case QuestionStatus.asked:
+        return JetlagBadgeColor.orange;
+      case QuestionStatus.answered:
+        return JetlagBadgeColor.green;
+      case QuestionStatus.expired:
+        return JetlagBadgeColor.red;
+      case QuestionStatus.vetoed:
+        return JetlagBadgeColor.purple;
+      case QuestionStatus.pending:
+        return JetlagBadgeColor.blue;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final statusColor = switch (sessionQuestion.status) {
-      QuestionStatus.asked => Colors.orange,
-      QuestionStatus.answered => Colors.green,
-      QuestionStatus.expired => Colors.red,
-      QuestionStatus.vetoed => Colors.purple,
-      QuestionStatus.pending => Colors.grey,
-    };
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: JetLagTheme.getCategoryColor(question.category.displayName),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    question.category.displayName,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: context.surface2,
+        borderRadius: BorderRadius.circular(JetlagRadii.sm),
+        border: Border.all(color: context.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              JetlagBadge(
+                label: question.category.displayName,
+                color: JetlagBadgeColor.blue,
+              ),
+              const Spacer(),
+              JetlagBadge(
+                label: sessionQuestion.status.name,
+                color: _statusBadgeColor(sessionQuestion.status),
+              ),
+              if (sessionQuestion.wasTestMode) ...[
+                const SizedBox(width: 6),
+                JetlagBadge(
+                  label: 'TEST',
+                  color: JetlagBadgeColor.blue,
                 ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    sessionQuestion.status.name.toUpperCase(),
-                    style: TextStyle(
-                      color: statusColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                if (sessionQuestion.wasTestMode)
-                  Container(
-                    margin: const EdgeInsets.only(left: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text(
-                      'TEST',
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
               ],
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            question.text,
+            style: TextStyle(
+              fontSize: 14,
+              color: context.textPrimary,
             ),
-            const SizedBox(height: 12),
+          ),
+          if (sessionQuestion.answerText != null) ...[
+            const SizedBox(height: 6),
             Text(
-              question.text,
-              style: const TextStyle(fontSize: 16),
+              'Answer: ${sessionQuestion.answerText}',
+              style: TextStyle(
+                color: context.textSecondary,
+                fontSize: 13,
+                fontStyle: FontStyle.italic,
+              ),
             ),
-            if (sessionQuestion.answerText != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Answer: ${sessionQuestion.answerText}',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ],
-            if (sessionQuestion.answerPhotoUrl != null) ...[
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  sessionQuestion.answerPhotoUrl!,
-                  height: 150,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ],
           ],
-        ),
+          if (sessionQuestion.answerPhotoUrl != null) ...[
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(JetlagRadii.sm),
+              child: Image.network(
+                sessionQuestion.answerPhotoUrl!,
+                height: 150,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
