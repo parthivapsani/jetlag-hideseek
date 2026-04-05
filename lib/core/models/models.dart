@@ -3,3 +3,6 @@ export 'game_session.dart';
 export 'question.dart';
 export 'card.dart';
 export 'station.dart';
+export 'team.dart';
+export 'round.dart';
+export 'feature_request.dart';

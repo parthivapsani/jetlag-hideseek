@@ -40,6 +40,9 @@ class GameSession with _$GameSession {
     int? pausedTimeRemainingSeconds,
     DateTime? endedAt,
     String? winnerId,
+    String? winningTeamId,
+    @Default(false) bool winnerOverride,
+    @Default(2) int totalRounds,
     required String createdBy,
     required DateTime createdAt,
   }) = _GameSession;
@@ -59,6 +62,7 @@ class Participant with _$Participant {
     required String deviceToken,
     @Default(false) bool isConnected,
     @Default(false) bool isHost,
+    String? teamId,
     double? lastLocationLat,
     double? lastLocationLng,
     DateTime? lastLocationAt,
