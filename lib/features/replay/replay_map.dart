@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../core/models/models.dart';
-import '../../design/colors.dart';
 import '../../design/theme.dart';
 
 /// Simplified replay map that shows event markers on a visual timeline map.

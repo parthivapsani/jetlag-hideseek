@@ -101,11 +101,6 @@ class _SummaryContent extends StatelessWidget {
     }
   }
 
-  String _teamName(String? teamId) {
-    if (teamId == null) return 'Unknown';
-    return teams.where((t) => t.id == teamId).firstOrNull?.name ?? 'Unknown';
-  }
-
   @override
   Widget build(BuildContext context) {
     final completedRounds = rounds

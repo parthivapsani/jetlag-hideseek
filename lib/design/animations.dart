@@ -2,37 +2,6 @@ import 'package:flutter/material.dart';
 
 /// Shared animation utilities for the Jet Lag design system.
 
-// ============ Page Transitions ============
-
-/// Horizontal slide transition for GoRouter pages.
-CustomTransitionPage<void> slideTransitionPage({
-  required Widget child,
-  required GoRouterState state,
-}) {
-  return CustomTransitionPage(
-    key: state.pageKey,
-    child: child,
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      return SlideTransition(
-        position: Tween(
-          begin: const Offset(1, 0),
-          end: Offset.zero,
-        ).animate(CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutCubic,
-        )),
-        child: FadeTransition(
-          opacity: CurvedAnimation(parent: animation, curve: Curves.easeIn),
-          child: child,
-        ),
-      );
-    },
-  );
-}
-
-// Importing GoRouterState type
-typedef GoRouterState = dynamic;
-
 // ============ Stagger Animations ============
 
 /// A widget that staggers its child's entrance animation.

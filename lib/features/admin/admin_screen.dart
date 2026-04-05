@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/models/models.dart';
-import '../../core/providers/game_event_provider.dart';
 import '../../core/services/api_usage_service.dart';
 import '../../core/services/nominatim_service.dart';
 import '../../core/services/supabase_init.dart';

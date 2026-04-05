@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/models.dart';
-import '../../core/providers/providers.dart';
 
 /// Reconstructed game state at a point in time.
 class ReplayState {
