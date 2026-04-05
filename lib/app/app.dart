@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'router.dart';
-import 'theme.dart';
+import '../design/theme.dart';
 import '../features/settings/settings_screen.dart';
 
 class JetLagApp extends ConsumerWidget {
@@ -15,8 +15,8 @@ class JetLagApp extends ConsumerWidget {
 
     return MaterialApp.router(
       title: 'Jet Lag: Hide & Seek',
-      theme: JetLagTheme.light,
-      darkTheme: JetLagTheme.dark,
+      theme: JetlagTheme.light(),
+      darkTheme: JetlagTheme.dark(),
       themeMode: themeMode,
       routerConfig: router,
       debugShowCheckedModeBanner: false,

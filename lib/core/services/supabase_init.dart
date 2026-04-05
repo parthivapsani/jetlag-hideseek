@@ -5,22 +5,17 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
 
 /// Supabase configuration
-/// Replace these with your actual Supabase project credentials
 class SupabaseConfig {
-  // TODO: Move these to environment variables or secure storage
-  static const String url = String.fromEnvironment(
+  static const url = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https://your-project.supabase.co',
+    defaultValue: 'https://jetlag.ratz.fyi/supabase',
   );
-
-  static const String anonKey = String.fromEnvironment(
+  static const anonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: 'your-anon-key',
+    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNjQxNzY5MjAwLCJleHAiOjE3OTk1MzU2MDB9.hVGT3I0Nxn2dz0Tdh9HWlxu_a0HUodMXm6PSuTFGct0',
   );
 
-  /// Check if Supabase is configured
-  static bool get isConfigured =>
-      url != 'https://your-project.supabase.co' && anonKey != 'your-anon-key';
+  static bool get isConfigured => url.isNotEmpty && anonKey.isNotEmpty && !url.contains('placeholder');
 }
 
 /// Initialize Supabase
