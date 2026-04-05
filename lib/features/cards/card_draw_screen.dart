@@ -52,14 +52,7 @@ class _CardDrawScreenState extends ConsumerState<CardDrawScreen>
   Future<void> _startDrawing() async {
     // Draw cards from deck
     final cardActions = ref.read(cardActionsProvider);
-    final drawnCards = <GameCard>[];
-
-    for (int i = 0; i < widget.drawCount; i++) {
-      final card = cardActions.drawRandomCard();
-      if (card != null) {
-        drawnCards.add(card);
-      }
-    }
+    final drawnCards = cardActions.drawRandomCards(widget.drawCount);
 
     setState(() {
       _drawnCards = drawnCards;
@@ -115,7 +108,7 @@ class _CardDrawScreenState extends ConsumerState<CardDrawScreen>
       if (_selectedIndices.contains(i)) {
         await cardActions.keepCard(card.id);
       } else {
-        await cardActions.discardDrawnCard(card.id);
+        cardActions.discardDrawnCard(card.id);
       }
     }
 
@@ -403,8 +396,8 @@ class _SelectableCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  // Effect
-                  if (card.effect != null)
+                  // Rules
+                  if (card.rules != null)
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
@@ -412,7 +405,7 @@ class _SelectableCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        card.effect!,
+                        card.rules!,
                         style: TextStyle(
                           fontSize: 11,
                           color: color,

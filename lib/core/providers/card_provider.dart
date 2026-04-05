@@ -262,6 +262,32 @@ class CardActions {
     if (participantId == null) return;
     await _service.triggerTimeTrap(trapId, participantId);
   }
+
+  /// Draw N random cards from the deck. Returns the drawn GameCards.
+  List<GameCard> drawRandomCards(int count) {
+    final deckNotifier = _ref.read(deckStateProvider.notifier);
+    final allCards = _ref.read(allCardsProvider);
+    final drawn = <GameCard>[];
+    for (var i = 0; i < count; i++) {
+      final cardId = deckNotifier.drawCard();
+      if (cardId == null) break;
+      final card = allCards.firstWhere((c) => c.id == cardId);
+      drawn.add(card);
+    }
+    return drawn;
+  }
+
+  /// Keep a drawn card (add to hand in Supabase).
+  Future<HiderCard> keepCard(String cardId) async {
+    final sessionId = _ref.read(currentSessionIdProvider);
+    if (sessionId == null) throw Exception('No active session');
+    return _service.drawCard(sessionId: sessionId, cardId: cardId);
+  }
+
+  /// Discard a drawn card (don't keep it, return to discard pile).
+  void discardDrawnCard(String cardId) {
+    _ref.read(deckStateProvider.notifier).discardCard(cardId);
+  }
 }
 
 // ============ Card Database ============
@@ -310,7 +336,6 @@ const _allCards = <GameCard>[
     powerupEffect: 'veto_question',
     playCondition: 'Can only be played when a question is pending.',
     rules: 'Play immediately after a question is asked to cancel it. The seekers do not draw cards.',
-    canBeVetoed: false,
   ),
   GameCard(
     id: 'randomize',
