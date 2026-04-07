@@ -1,35 +1,51 @@
-# Smoke Test Results & Known Issues
+# Known Issues & Testing Notes
 
-**Date:** 2026-04-05
-**Tested by:** Automated curl smoke test (no browser)
+**Last updated:** 2026-04-06
 
-## What Works
+## E2E Test Results
 
-- **Site loads correctly** — HTML includes Flutter bootstrap (`flutter_bootstrap.js`), Plus Jakarta Sans font, and Google Maps script
-- **Flutter assets served** — `flutter.js`, `main.dart.js`, and `manifest.json` all return HTTP 200
-- **Supabase proxy** — `/supabase/rest/v1/` returns the full PostgREST Swagger/OpenAPI spec via Kong gateway
-- **Feature requests table** — INSERT and SELECT both work; row inserted with auto-generated UUID and timestamps
-- **Teams table** — Accessible, returns empty array (no teams created yet)
-- **Rounds table** — Accessible, returns empty array (no rounds created yet)
-- **SPA routing** — `/ideas`, `/settings`, and `/join` all return HTTP 200 (Caddy serves index.html for all routes)
+**58/58 passing** on Mobile Chrome (390x844) and Desktop Chrome (1280x720).
 
-## What Needs Browser Testing
+### Test Coverage
 
-These cannot be verified via curl and require manual browser testing:
+| Area | Tests | Status |
+|------|-------|--------|
+| Home page loading | 4 | Pass |
+| SPA routing | 8 | Pass |
+| Join game flow | 4 | Pass |
+| Full game lifecycle | 12 | Pass |
+| Feature requests | 2 | Pass |
+| localStorage identity | 4 | Pass |
+| Post-game summary | 4 | Pass |
+| Replay screen | 4 | Pass |
+| Event logging API | 2 | Pass |
+| API usage tracking | 2 | Pass |
+| Page transitions | 2 | Pass |
+| Network & performance | 6 | Pass |
 
-- Flutter app actually renders (WebAssembly/CanvasKit initialization)
-- Google Maps loads and displays correctly with the configured API key
-- Real-time Supabase subscriptions (WebSocket connections)
-- Game session creation and join flow
-- Team assignment and round management UI
-- GPS/location tracking functionality
-- PWA install prompt and offline behavior
-- Responsive layout on mobile devices
+### What Needs Manual/Browser Testing
 
-## Known Issues
+These require real browser interaction (not Playwright):
+- **Interactive game flow**: Creating a game from home screen, joining via room code, selecting teams, starting a round
+- **Real-time sync**: Two browsers seeing the same game state update in real-time
+- **Google Maps interaction**: Pan/zoom, polygon display, marker placement
+- **Card draw UI**: Flip animation when drawing cards
+- **Question flow**: Asking a question as seeker, countdown timer on hider, answering
+- **Timer accuracy**: Verify hiding/seeking timers match expected duration
+- **PWA install**: Install prompt on mobile, offline behavior
+- **Admin dashboard**: Requires OAuth — create game, stop game, manage feature requests, view event log, API usage stats
 
-- None found during smoke testing. All endpoints respond correctly.
+## Known Limitations
 
-## Compilation Warnings
+1. **Flutter canvas rendering**: Screenshots may appear blank if captured before Flutter initializes (~3-5 seconds). This is a known Flutter web behavior, not a bug.
 
-- No build-time warnings observed during this test (build was done in a prior task).
+2. **Event-dependent sections**: The post-game summary and replay screens show data from the `game_events` table. If a game was played before event logging was deployed (Phase 2), those games will show the round-based overview but no event timeline.
+
+3. **Replay map**: The replay screen uses a simplified visualization (event counters + phase indicator) instead of a full Google Maps replay. This avoids API costs during replay. Location events are counted but not plotted on a map.
+
+4. **Admin behind OAuth**: The `/admin` route redirects to Google OAuth via access-manager. Automated tests can only verify the redirect, not the admin UI itself.
+
+## Analyzer Status
+
+- **Phase 2 files**: 0 warnings
+- **Pre-existing files**: ~240 info-level hints (trailing commas, const constructors) and a few pre-existing warnings in Phase 1 code. No errors except one pre-existing test file issue (`widget_test.dart` references undefined `MyApp`).
